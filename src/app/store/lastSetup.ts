@@ -1,4 +1,4 @@
-import type { BingoPattern, ListLength, Mode } from '@shared/types';
+import type { Approvals, BingoPattern, ListLength, Mode } from '@shared/types';
 import { createLocalStore, isRecord } from './localStore';
 
 /** What the host picked last time, so Setup and "play again" start from it. */
@@ -8,6 +8,8 @@ export interface LastSetup {
   listLength: ListLength;
   pattern: BingoPattern;
   playerNames: string[];
+  /** Rooms only. Optional so setups saved before Phase 2 still validate. */
+  approvals?: Approvals;
 }
 
 export const DEFAULT_SETUP: LastSetup = {
@@ -16,6 +18,7 @@ export const DEFAULT_SETUP: LastSetup = {
   listLength: 'normal',
   pattern: 'line',
   playerNames: ['Player 1', 'Player 2'],
+  approvals: 'auto',
 };
 
 export const lastSetupStore = createLocalStore<LastSetup>(

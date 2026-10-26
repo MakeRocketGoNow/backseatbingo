@@ -685,3 +685,141 @@ a {
 .chip-pending .chip-claimer {
   color: var(--pending);
 }
+
+/* Rooms */
+
+.conn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.conn-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.conn-open .conn-dot {
+  background: var(--win);
+}
+
+.conn-connecting .conn-dot,
+.conn-reconnecting .conn-dot {
+  background: var(--pending);
+  animation: conn-pulse 1s ease-in-out infinite alternate;
+}
+
+.conn-reconnecting {
+  background: color-mix(in srgb, var(--pending) 18%, var(--bg));
+  color: var(--fg);
+}
+
+.conn-closed .conn-dot {
+  background: var(--danger);
+}
+
+@keyframes conn-pulse {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.page-bleed .conn {
+  padding-left: 16px;
+}
+
+.code-box {
+  text-align: center;
+  padding: 8px 0 0;
+}
+
+.code-label {
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+}
+
+.code-big {
+  font-size: 4rem;
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  padding-left: 0.25em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.code-input {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.qr {
+  display: inline-block;
+  background: #fff;
+  padding: 8px;
+  border-radius: 12px;
+}
+
+.qr img {
+  display: block;
+}
+
+.player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 700;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.dot-on {
+  background: var(--win);
+}
+
+.dot-off {
+  background: var(--border);
+}
+
+.tag {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
