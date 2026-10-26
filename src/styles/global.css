@@ -14,6 +14,7 @@
   --win-fg: #ffffff;
   --danger: #b3261e;
   --danger-fg: #ffffff;
+  --pending: #9a6700;
   --radius: 16px;
   --tap: 56px;
   --gap: 12px;
@@ -36,6 +37,7 @@
     --win-fg: #04210f;
     --danger: #ff7b72;
     --danger-fg: #2b0300;
+    --pending: #e3b341;
   }
 }
 
@@ -670,4 +672,16 @@ a {
   background: var(--surface);
   color: var(--muted);
   font-weight: 600;
+}
+
+/* Pending claims (host approvals) */
+
+.chip-pending {
+  border-style: dashed;
+  border-color: var(--pending);
+  background: color-mix(in srgb, var(--pending) 14%, var(--surface));
+}
+
+.chip-pending .chip-claimer {
+  color: var(--pending);
 }
