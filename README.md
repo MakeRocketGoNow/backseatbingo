@@ -28,3 +28,7 @@ pnpm build       # typecheck + Vite production build
 - `shared/` types used by the client and the Worker.
 - `packs/` content packs as JSON. `family.json` is sample content; real lists go in the gitignored `packs/private/` and override a committed pack with the same id. Every pack is free in v1; `isPackUnlocked()` in `game/pack.ts` is the entitlement stub.
 - `src/app/` React client: `screens/`, `components/`, `store/` (local game, packs via TanStack Query, settings), `router.tsx`.
+
+## License
+
+Backseat Bingo is source-available under the [Elastic License 2.0](LICENSE.md) (`Elastic-2.0`). You can use it, modify it and redistribute the source; you cannot offer it to others as a hosted or managed service.
