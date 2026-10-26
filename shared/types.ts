@@ -106,3 +106,47 @@ export interface Standing {
   /** 1-based rank; tied players share a rank. */
   rank: number;
 }
+
+// ---- Rooms (Phase 2) ----
+
+/** Who approves Called It claims in a room. The host's own claims never wait. */
+export type Approvals = 'auto' | 'host';
+
+export const APPROVALS_LABELS: Record<Approvals, string> = {
+  auto: 'First tap wins',
+  host: 'Host approves each call',
+};
+
+export interface RoomSettings {
+  mode: Mode;
+  listLength: ListLength;
+  pattern: BingoPattern;
+  approvals: Approvals;
+}
+
+export interface RoomPlayer extends Player {
+  connected: boolean;
+  joinedAt: number;
+}
+
+export type RoomStatus = 'lobby' | 'playing' | 'ended' | 'closed';
+
+export const MAX_ROOM_PLAYERS = 12;
+
+/**
+ * Everything a client needs to render a room. The Durable Object stores this
+ * plus a private token map, and broadcasts this whole object after any change.
+ */
+export interface RoomState {
+  code: string;
+  status: RoomStatus;
+  hostId: string;
+  players: RoomPlayer[];
+  settings: RoomSettings;
+  /** The full pack, so guests never need a custom list locally. */
+  pack: Pack;
+  game: GameState | null;
+  round: number;
+  createdAt: number;
+  updatedAt: number;
+}

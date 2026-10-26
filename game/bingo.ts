@@ -111,6 +111,15 @@ export function toggleMark(state: BingoState, playerId: string, cell: number): B
   return { ok: true, state: { ...state, cards: { ...state.cards, [playerId]: { ...card, marks } } } };
 }
 
+/** Explicit mark or unmark, used by rooms so a replayed message is idempotent. */
+export function setMark(state: BingoState, playerId: string, cell: number, marked: boolean): BingoResult {
+  const card = state.cards[playerId];
+  if (card && card.marks[cell] === marked && cell !== BINGO_FREE_INDEX && state.status === 'playing') {
+    return { ok: true, state };
+  }
+  return toggleMark(state, playerId, cell);
+}
+
 /** Player calls bingo. Verified against the stored card and marks. */
 export function callBingo(state: BingoState, playerId: string, at: number): BingoResult {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
