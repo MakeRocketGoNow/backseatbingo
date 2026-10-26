@@ -174,7 +174,7 @@ export class RoomDO extends DurableObject<Env> {
       const tokens = { ...stored.tokens };
       if (!playerId) {
         if (!name) {
-          this.send(ws, { type: 'error', code: 'bad-message', message: 'Pick a name first.', seq: msg.seq });
+          this.send(ws, { type: 'error', code: 'not-joined', message: 'Pick a name first.', seq: msg.seq });
           return;
         }
         playerId = newPlayerId();
