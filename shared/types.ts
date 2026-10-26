@@ -1,0 +1,108 @@
+// Types shared by the client, the pure game module and (in Phase 2) the Worker.
+// Nothing in here may import React or Cloudflare APIs.
+
+export type Mode = 'spotit' | 'bingo';
+
+export const MODE_LABELS: Record<Mode, string> = {
+  spotit: 'Called It',
+  bingo: 'Bingo',
+};
+
+export interface PackItem {
+  id: string;
+  text: string;
+  emoji?: string;
+  rarity?: 'common' | 'uncommon' | 'rare';
+  region?: string;
+}
+
+export interface Pack {
+  id: string;
+  name: string;
+  description: string;
+  free: boolean;
+  minAge: number;
+  items: PackItem[];
+  /** True for packs the host created on their device. */
+  custom?: boolean;
+}
+
+export type ListLength = 'quick' | 'normal' | 'long';
+
+export const LIST_LENGTH_COUNT: Record<ListLength, number | 'all'> = {
+  quick: 15,
+  normal: 30,
+  long: 'all',
+};
+
+export type BingoPattern = 'line' | 'corners' | 'x' | 'blackout';
+
+export const BINGO_PATTERN_LABELS: Record<BingoPattern, string> = {
+  line: 'Any line',
+  corners: 'Four corners',
+  x: 'X',
+  blackout: 'Blackout',
+};
+
+export interface Player {
+  id: string;
+  name: string;
+}
+
+/**
+ * A claim on an item in Called It. `pending` is reserved for the Phase 2
+ * "host approves" room setting; Phase 1 only ever produces `claimed`.
+ */
+export interface Claim {
+  itemId: string;
+  playerId: string;
+  at: number;
+  status: 'claimed' | 'pending';
+}
+
+export type GameStatus = 'playing' | 'ended';
+
+export interface SpotItState {
+  mode: 'spotit';
+  status: GameStatus;
+  players: Player[];
+  items: PackItem[];
+  claims: Record<string, Claim>;
+  endedAt?: number;
+}
+
+export const BINGO_SIZE = 5;
+export const BINGO_CELLS = BINGO_SIZE * BINGO_SIZE;
+export const BINGO_FREE_INDEX = 12;
+
+export interface BingoCard {
+  playerId: string;
+  /** 25 cells, row-major. Cell 12 is the free square and is null. */
+  cells: (PackItem | null)[];
+  /** 25 booleans. The free square is always true. */
+  marks: boolean[];
+}
+
+export interface BingoWin {
+  playerId: string;
+  at: number;
+}
+
+export interface BingoState {
+  mode: 'bingo';
+  status: GameStatus;
+  players: Player[];
+  pattern: BingoPattern;
+  cards: Record<string, BingoCard>;
+  winners: BingoWin[];
+  endedAt?: number;
+}
+
+export type GameState = SpotItState | BingoState;
+
+export interface Standing {
+  player: Player;
+  score: number;
+  /** 1-based rank; tied players share a rank. */
+  rank: number;
+}
