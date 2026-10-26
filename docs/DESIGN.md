@@ -48,7 +48,20 @@ Design direction: big tap targets (a kid in a moving car), high contrast, readab
 4. **Android.** TWA package and store listing.
 5. **iOS.** Capacitor shell with haptics, share sheet, keep-awake.
 
+## Rooms
+
+The host creates a room (`POST /api/rooms`, rate limited per IP) sending the full pack, so the Worker knows nothing about packs and custom lists reach guests as part of room state. Each device has a random token in localStorage; the Durable Object maps tokens to player ids and never sends the map to clients. Clients always send `join` after connecting; a known token makes that a reconnect, so there is no separate reconnect path.
+
+The DO broadcasts the whole room after every change. Each client message carries a sequence number; the server acknowledges it on the sender's next snapshot or rejects it with an error that names the sequence. The client keeps unacknowledged taps in a queue, replays them through `game/room.ts` on top of the latest snapshot so the UI responds instantly even offline, and drops them once acknowledged or rejected. Only game actions are replayed (claims, marks, bingo); round and membership changes wait for the server.
+
+Host approvals is a room setting: "auto" claims on tap and the host can undo; "host approves" makes guest claims pending (they still reserve the item) until the host approves or rejects. The host's own claims never wait.
+
 ## Decisions log
+
+- **2026-10-26, Phase 2 scope.** No renaming mid-game. Host approvals ship in Phase 2 with "auto" as the default.
+- **2026-10-26, new rounds.** "Play again" in a room starts the next round immediately with the host's chosen settings rather than returning everyone to the lobby; latecomers can still join mid-game. The lobby exists for the first gathering only.
+- **2026-10-26, host leaving.** The host leaving closes the room for everyone. Guests leaving are removed; their token can rejoin as a new player.
+- **2026-10-26, local testing of rooms.** Two players on one machine use two origins (the Vite dev server and the Worker's own port) so each gets its own player token.
 
 - **2026-10-26, Called It on a single device.** Local mode is a real multi-player game, not a checklist. Setup takes 1 to 8 player names. Tapping an unclaimed chip opens a "Who called it?" picker with one button per player; with a single player the tap claims directly. The same names drive Bingo pass-and-play, capped at 4 cards.
 - **2026-10-26, host undo.** No confirmation dialog. Tapping a claimed chip opens a sheet naming the claimer with Undo and "Give it to someone else" (reassign). Reaching Undo already takes two deliberate taps.
