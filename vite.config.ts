@@ -11,6 +11,12 @@ export default defineConfig({
       '@app': fileURLToPath(new URL('./src/app', import.meta.url)),
     },
   },
+  server: {
+    // The Worker runs on 8787 in development (`pnpm api`); Vite serves the client.
+    proxy: {
+      '/api': { target: 'http://localhost:8787', ws: true, changeOrigin: true },
+    },
+  },
   test: {
     include: ['game/**/*.test.ts', 'src/**/*.test.ts'],
     environment: 'node',
