@@ -1,6 +1,6 @@
 # Working in this repo
 
-This repo is intended to be open source. Keep personal and proprietary material out of tracked files, commit messages and docs:
+This repo is public and source-available under the Elastic License 2.0 (see `LICENSE.md`). Keep personal and proprietary material out of tracked files, commit messages and docs:
 
 - Real content packs go in `packs/private/` (gitignored). `packs/family.json` is sample content only.
 - The product plan with business details lives in `docs/private/` (gitignored). `docs/DESIGN.md` is the public version; add product decisions to its decisions log.

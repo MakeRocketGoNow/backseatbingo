@@ -3,7 +3,7 @@ dist
 .DS_Store
 *.local
 
-# Private material that must not ship with the open-source repo:
+# Private material that must not ship with the public repo:
 # the handoff plan (business details) and real content packs.
 docs/private/
 packs/private/*
