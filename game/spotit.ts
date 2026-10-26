@@ -16,19 +16,46 @@ function hasItem(state: SpotItState, itemId: string): boolean {
   return state.items.some((i) => i.id === itemId);
 }
 
-/** First-write-wins. A second claim on the same item is rejected. */
-export function claim(state: SpotItState, itemId: string, playerId: string, at: number): Result<SpotItState> {
+/**
+ * First-write-wins. A second claim on the same item is rejected, whether the
+ * first one is claimed or still pending host approval. With `pending` the
+ * claim reserves the item but does not score until `approveClaim`.
+ */
+export function claim(
+  state: SpotItState,
+  itemId: string,
+  playerId: string,
+  at: number,
+  pending = false,
+): Result<SpotItState> {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
   if (!hasItem(state, itemId)) return { ok: false, error: 'unknown-item' };
   if (!hasPlayer(state, playerId)) return { ok: false, error: 'unknown-player' };
   if (state.claims[itemId]) return { ok: false, error: 'already-claimed' };
-  const next: Claim = { itemId, playerId, at, status: 'claimed' };
+  const next: Claim = { itemId, playerId, at, status: pending ? 'pending' : 'claimed' };
   const claims = { ...state.claims, [itemId]: next };
   const nextState: SpotItState = { ...state, claims };
   return { ok: true, state: isExhausted(nextState) ? endSpotItGame(nextState, at) : nextState };
 }
 
-/** Host undo. Returns the item to unclaimed. */
+/** Host approves a pending claim. It then scores like any other claim. */
+export function approveClaim(state: SpotItState, itemId: string, at: number): Result<SpotItState> {
+  if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
+  const existing = state.claims[itemId];
+  if (!existing) return { ok: false, error: 'not-claimed' };
+  if (existing.status === 'claimed') return { ok: true, state };
+  const claims = { ...state.claims, [itemId]: { ...existing, status: 'claimed' as const, at } };
+  const nextState: SpotItState = { ...state, claims };
+  return { ok: true, state: isExhausted(nextState) ? endSpotItGame(nextState, at) : nextState };
+}
+
+/** Add a late joiner. Idempotent for players already in the game. */
+export function addSpotItPlayer(state: SpotItState, player: Player): SpotItState {
+  if (hasPlayer(state, player.id)) return state;
+  return { ...state, players: [...state.players, player] };
+}
+
+/** Host undo, or rejection of a pending claim. Returns the item to unclaimed. */
 export function unclaim(state: SpotItState, itemId: string): Result<SpotItState> {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
   if (!state.claims[itemId]) return { ok: false, error: 'not-claimed' };

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BingoPattern, PackItem, Player } from '../shared/types';
 import { BINGO_CELLS, BINGO_FREE_INDEX } from '../shared/types';
 import {
+  addBingoPlayer,
   bingoStandings,
   callBingo,
   createBingoGame,
@@ -186,5 +187,16 @@ describe('marking and calling bingo', () => {
       ['p1', 1, 2],
     ]);
     expect(markedCount(r.state.cards['p1'])).toBe(1);
+  });
+});
+
+describe('late joiners', () => {
+  it('addBingoPlayer deals a card and is idempotent', () => {
+    const g = createBingoGame(players, items, 'line', seededRng(3));
+    const g2 = addBingoPlayer(g, { id: 'p3', name: 'Late' }, items, seededRng(4));
+    expect(g2.players.map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
+    expect(g2.cards['p3']?.cells).toHaveLength(25);
+    expect(addBingoPlayer(g2, { id: 'p3', name: 'Late' }, items, seededRng(5))).toBe(g2);
+    expect(toggleMark(g2, 'p3', 0).ok).toBe(true);
   });
 });

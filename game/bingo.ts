@@ -45,6 +45,21 @@ export function createBingoGame(
   return { mode: 'bingo', status: 'playing', players, pattern, cards, winners: [] };
 }
 
+/** Add a late joiner with a fresh card. Idempotent for players already in the game. */
+export function addBingoPlayer(
+  state: BingoState,
+  player: Player,
+  items: readonly PackItem[],
+  rng: Rng,
+): BingoState {
+  if (state.cards[player.id]) return state;
+  return {
+    ...state,
+    players: [...state.players, player],
+    cards: { ...state.cards, [player.id]: generateCard(player.id, items, rng) },
+  };
+}
+
 const idx = (row: number, col: number): number => row * BINGO_SIZE + col;
 
 function allMarked(marks: readonly boolean[], cells: readonly number[]): boolean {
