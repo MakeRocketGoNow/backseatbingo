@@ -108,9 +108,10 @@ export function Lobby() {
         <div className="notice center">Waiting for {host?.name ?? 'the host'} to start…</div>
       )}
 
-      {isHost && (
+      {/* Mounted only while open, so every opening starts from the room's current settings. */}
+      {isHost && editing && (
         <SettingsSheet
-          open={editing}
+          open
           onClose={() => setEditing(false)}
           roomPack={room.pack}
           initial={{ packId: room.pack.id, ...s }}

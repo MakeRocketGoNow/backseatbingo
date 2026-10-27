@@ -104,18 +104,21 @@ function RoomWinner() {
           <button className="btn btn-ghost" onClick={() => setConfirmClose(true)}>
             Close the trip
           </button>
-          <SettingsSheet
-            open={nextRound}
-            onClose={() => setNextRound(false)}
-            roomPack={room.pack}
-            // Called It is the default on "play again".
-            initial={{ packId: room.pack.id, ...room.settings, mode: 'spotit' }}
-            submitLabel="Start the next round"
-            onSubmit={(settings, pack) => {
-              send({ type: 'newRound', settings, ...(pack ? { pack } : {}) });
-              setNextRound(false);
-            }}
-          />
+          {/* Mounted only while open, so it starts from the room's current settings. */}
+          {nextRound && (
+            <SettingsSheet
+              open
+              onClose={() => setNextRound(false)}
+              roomPack={room.pack}
+              // Called It is the default on "play again".
+              initial={{ packId: room.pack.id, ...room.settings, mode: 'spotit' }}
+              submitLabel="Start the next round"
+              onSubmit={(settings, pack) => {
+                send({ type: 'newRound', settings, ...(pack ? { pack } : {}) });
+                setNextRound(false);
+              }}
+            />
+          )}
           <Sheet open={confirmClose} title="Close the trip?" onClose={() => setConfirmClose(false)}>
             <p className="muted center">Everyone will be sent home. The code stops working.</p>
             <button className="btn btn-danger" onClick={() => send({ type: 'close' })}>
