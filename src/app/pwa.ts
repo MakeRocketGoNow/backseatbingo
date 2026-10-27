@@ -23,13 +23,16 @@ export function registerServiceWorker(onUpdate: (apply: () => void) => void): vo
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
-        if (reg.waiting) offer(reg.waiting);
-        reg.addEventListener('updatefound', () => {
-          const worker = reg.installing;
+        const watch = (worker: ServiceWorker | null) => {
           worker?.addEventListener('statechange', () => {
             if (worker.state === 'installed') offer(worker);
           });
-        });
+        };
+        if (reg.waiting) offer(reg.waiting);
+        // The browser's own update check on navigation may already be under
+        // way, with `updatefound` fired before we could listen.
+        watch(reg.installing);
+        reg.addEventListener('updatefound', () => watch(reg.installing));
       })
       .catch(() => {
         // Registration failing only means no offline shell; the app still runs.
