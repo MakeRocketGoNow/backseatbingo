@@ -108,7 +108,9 @@ export class RoomConnection {
       this.attempt = 0;
       this.publish({ connection: 'open' });
       // A known token makes this a reconnect; the server ignores the name then.
-      this.raw({ type: 'join', name: this.name, seq: ++this.seq });
+      // The join takes seq 0, below every queued tap, so its ack cannot drop
+      // taps the server has not seen yet.
+      this.raw({ type: 'join', name: this.name, seq: 0 });
       for (const m of this.pending) this.raw(m);
     };
     ws.onmessage = (e: MessageEvent<string>) => {
