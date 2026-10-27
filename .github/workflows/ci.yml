@@ -35,7 +35,7 @@ jobs:
   # Every push to main that passes the checks goes live. Needs two repository
   # secrets, CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; the job fails at
   # the deploy step until they exist. VITE_TIP_URL is optional: unset, the
-  # winner screen's tip line is hidden rather than built with the placeholder.
+  # winner screen's tip line is hidden.
   deploy:
     name: Deploy to Cloudflare
     needs: check
