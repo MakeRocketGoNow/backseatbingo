@@ -42,22 +42,39 @@ jobs:
     # A stuck deploy would otherwise hold production-deploy for six hours.
     timeout-minutes: 15
     environment: production
-    # A deploy in progress is never cancelled halfway. GitHub keeps one waiting
-    # run per group, so pushes that land meanwhile collapse into a single
-    # deploy of the newest commit.
+    # A deploy in progress is never cancelled halfway, and GitHub keeps one
+    # waiting run per group, so deploys that pile up collapse into the last to
+    # arrive. Checks run in parallel, though, so that can be an older commit;
+    # the first step below makes such a deploy skip itself.
     concurrency:
       group: production-deploy
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
 
-      - uses: ./.github/actions/setup
+      # Runs while the job holds the group. If main has moved on, the newer
+      # commit's own run deploys it; deploying this one would roll production
+      # back. When that newer run's check fails, production stays on the last
+      # good deploy, which is right while main is red.
+      - name: Skip if main has moved on
+        id: tip
+        run: |
+          tip="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::notice::main is at $tip now; leaving the deploy to that run."
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - run: pnpm build
+      - if: steps.tip.outputs.stale != 'true'
+        uses: ./.github/actions/setup
+
+      - if: steps.tip.outputs.stale != 'true'
+        run: pnpm build
         env:
           VITE_TIP_URL: ${{ secrets.VITE_TIP_URL }}
 
-      - run: pnpm exec wrangler deploy
+      - if: steps.tip.outputs.stale != 'true'
+        run: pnpm exec wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
