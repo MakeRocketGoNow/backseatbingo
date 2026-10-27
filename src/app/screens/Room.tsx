@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { BingoBoard } from '@app/components/BingoBoard';
 import { CalledItBoard } from '@app/components/CalledItBoard';
+import { CloseTripButton } from '@app/components/CloseTripButton';
 import { ConnectionBadge } from '@app/components/ConnectionBadge';
+import { LeaveButton } from '@app/components/LeaveButton';
 import { Page } from '@app/components/Page';
-import { Sheet } from '@app/components/Sheet';
+import { SettingsSheet } from '@app/components/SettingsSheet';
 import { WinnerView } from '@app/components/WinnerView';
 import { useDisplayName } from '@app/store/identity';
 import { RoomProvider, useRoom, type CloseReason } from '@app/store/room';
-import { Lobby, SettingsSheet } from './Lobby';
+import { Lobby } from './Lobby';
 
 export function RoomRoute({ code }: { code: string }) {
   const [name] = useDisplayName();
@@ -90,7 +92,6 @@ function Playing() {
 function RoomWinner() {
   const { room, isHost, connection, send } = useRoom();
   const [nextRound, setNextRound] = useState(false);
-  const [confirmClose, setConfirmClose] = useState(false);
   if (!room || !room.game) return <Lobby />;
   const host = room.players.find((p) => p.id === room.hostId);
 
@@ -101,9 +102,7 @@ function RoomWinner() {
           <button className="btn btn-primary btn-big" onClick={() => setNextRound(true)}>
             Play again
           </button>
-          <button className="btn btn-ghost" onClick={() => setConfirmClose(true)}>
-            Close the trip
-          </button>
+          <CloseTripButton />
           {/* Mounted only while open, so it starts from the room's current settings. */}
           {nextRound && (
             <SettingsSheet
@@ -119,15 +118,6 @@ function RoomWinner() {
               }}
             />
           )}
-          <Sheet open={confirmClose} title="Close the trip?" onClose={() => setConfirmClose(false)}>
-            <p className="muted center">Everyone will be sent home. The code stops working.</p>
-            <button className="btn btn-danger" onClick={() => send({ type: 'close' })}>
-              Close the trip
-            </button>
-            <button className="btn btn-ghost" onClick={() => setConfirmClose(false)}>
-              Keep it open
-            </button>
-          </Sheet>
         </>
       ) : (
         <>
@@ -139,28 +129,6 @@ function RoomWinner() {
         </>
       )}
     </WinnerView>
-  );
-}
-
-/** Guest control: leave the trip, with a confirmation. */
-export function LeaveButton({ full }: { full?: boolean }) {
-  const { send } = useRoom();
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button className={`btn btn-ghost ${full ? '' : 'btn-auto'}`} onClick={() => setOpen(true)}>
-        Leave
-      </button>
-      <Sheet open={open} title="Leave the trip?" onClose={() => setOpen(false)}>
-        <p className="muted center">You can rejoin with the same code.</p>
-        <button className="btn btn-danger" onClick={() => send({ type: 'leave' })}>
-          Leave
-        </button>
-        <button className="btn btn-ghost" onClick={() => setOpen(false)}>
-          Stay
-        </button>
-      </Sheet>
-    </>
   );
 }
 

@@ -1,24 +1,21 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { Pack } from '@shared/types';
+import { useState } from 'react';
 import { APPROVALS_LABELS, BINGO_PATTERN_LABELS, MODE_LABELS } from '@shared/types';
 import { listItemCount } from '@game/index';
 import { joinLink } from '@app/api';
+import { CloseTripButton } from '@app/components/CloseTripButton';
 import { ConnectionBadge } from '@app/components/ConnectionBadge';
+import { LeaveButton } from '@app/components/LeaveButton';
 import { Page } from '@app/components/Page';
 import { QrCode } from '@app/components/QrCode';
-import { SettingsForm, type GameSettings } from '@app/components/SettingsForm';
-import { Sheet } from '@app/components/Sheet';
+import { SettingsSheet } from '@app/components/SettingsSheet';
 import { useToast } from '@app/components/Toast';
-import { usePacks } from '@app/store/packs';
 import { useRoom } from '@app/store/room';
-import { LeaveButton } from './Room';
 
 /** Room code large, QR, player list, Start for the host, "waiting" for guests. */
 export function Lobby() {
   const { room, you, isHost, connection, send, code } = useRoom();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
-  const [confirmClose, setConfirmClose] = useState(false);
   const link = joinLink(code);
 
   if (!room) return null;
@@ -101,9 +98,7 @@ export function Lobby() {
             Start {MODE_LABELS[s.mode]}
           </button>
           <p className="muted small center">Latecomers can still join after you start.</p>
-          <button className="btn btn-ghost" onClick={() => setConfirmClose(true)}>
-            Close the trip
-          </button>
+          <CloseTripButton />
         </div>
       ) : (
         <div className="notice center">Waiting for {host?.name ?? 'the host'} to start…</div>
@@ -123,54 +118,6 @@ export function Lobby() {
           }}
         />
       )}
-
-      <Sheet open={confirmClose} title="Close the trip?" onClose={() => setConfirmClose(false)}>
-        <p className="muted center">Everyone will be sent home. The code stops working.</p>
-        <button className="btn btn-danger" onClick={() => send({ type: 'close' })}>
-          Close the trip
-        </button>
-        <button className="btn btn-ghost" onClick={() => setConfirmClose(false)}>
-          Keep it open
-        </button>
-      </Sheet>
     </Page>
-  );
-}
-
-interface SettingsSheetProps {
-  open: boolean;
-  onClose: () => void;
-  roomPack: Pack;
-  initial: GameSettings;
-  submitLabel: string;
-  onSubmit: (settings: Omit<GameSettings, 'packId'>, pack: Pack | undefined) => void;
-}
-
-/** Host changes settings (lobby) or picks the next round (winner). The host's local packs are offered alongside the room's. */
-export function SettingsSheet({ open, onClose, roomPack, initial, submitLabel, onSubmit }: SettingsSheetProps) {
-  const { packs, isLoading } = usePacks();
-  const [value, setValueState] = useState<GameSettings>(initial);
-  const setValue = useCallback((next: GameSettings) => setValueState(next), []);
-  const options = useMemo(() => (packs.some((p) => p.id === roomPack.id) ? packs : [roomPack, ...packs]), [packs, roomPack]);
-  const chosen = options.find((p) => p.id === value.packId);
-
-  return (
-    <Sheet open={open} title="Game settings" onClose={onClose}>
-      <SettingsForm packs={options} isLoading={isLoading} value={value} onChange={setValue} showApprovals hideListLink />
-      <button
-        className="btn btn-primary btn-big"
-        disabled={!chosen}
-        onClick={() => {
-          if (!chosen) return;
-          const { packId, ...rest } = value;
-          onSubmit(rest, packId === roomPack.id ? undefined : chosen);
-        }}
-      >
-        {submitLabel}
-      </button>
-      <button className="btn btn-ghost" onClick={onClose}>
-        Cancel
-      </button>
-    </Sheet>
   );
 }
