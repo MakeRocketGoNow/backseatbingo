@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { Approvals, BingoPattern, ListLength, Mode, Pack } from '@shared/types';
-import { APPROVALS_LABELS, BINGO_PATTERN_LABELS, LIST_LENGTH_COUNT, MODE_LABELS } from '@shared/types';
-import { BINGO_MIN_ITEMS, canPlayBingo } from '@game/index';
+import { APPROVALS_LABELS, BINGO_PATTERN_LABELS, MODE_LABELS } from '@shared/types';
+import { BINGO_MIN_ITEMS, canPlayBingo, listItemCount } from '@game/index';
 
 export interface GameSettings {
   packId: string;
@@ -43,9 +43,7 @@ export function SettingsForm({ packs, isLoading, value, onChange, showApprovals,
   }, [value, pack, bingoOk, onChange]);
 
   function lengthLabel(l: ListLength): string {
-    const n = LIST_LENGTH_COUNT[l];
-    const total = pack?.items.length ?? 0;
-    const count = n === 'all' ? total : Math.min(n, total);
+    const count = listItemCount(pack?.items.length ?? 0, l);
     return `${count} item${count === 1 ? '' : 's'}`;
   }
 

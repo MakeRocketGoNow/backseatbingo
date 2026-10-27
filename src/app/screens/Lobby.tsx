@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { Pack } from '@shared/types';
-import { APPROVALS_LABELS, BINGO_PATTERN_LABELS, LIST_LENGTH_COUNT, MODE_LABELS } from '@shared/types';
+import { APPROVALS_LABELS, BINGO_PATTERN_LABELS, MODE_LABELS } from '@shared/types';
+import { listItemCount } from '@game/index';
 import { joinLink } from '@app/api';
 import { ConnectionBadge } from '@app/components/ConnectionBadge';
 import { Page } from '@app/components/Page';
@@ -25,7 +26,7 @@ export function Lobby() {
   const s = room.settings;
   const detail =
     s.mode === 'spotit'
-      ? `${LIST_LENGTH_COUNT[s.listLength] === 'all' ? room.pack.items.length : Math.min(LIST_LENGTH_COUNT[s.listLength] as number, room.pack.items.length)} items · ${APPROVALS_LABELS[s.approvals]}`
+      ? `${listItemCount(room.pack.items.length, s.listLength)} items · ${APPROVALS_LABELS[s.approvals]}`
       : BINGO_PATTERN_LABELS[s.pattern];
 
   async function share() {

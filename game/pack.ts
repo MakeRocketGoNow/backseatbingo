@@ -19,11 +19,15 @@ export function canPlaySpotIt(pack: Pick<Pack, 'items'>): boolean {
   return pack.items.length >= 1;
 }
 
+/** How many items a Called It game of this length draws from a pack of `total`. */
+export function listItemCount(total: number, length: ListLength): number {
+  const n = LIST_LENGTH_COUNT[length];
+  return n === 'all' ? total : Math.min(n, total);
+}
+
 /** Draw the items for a Called It game. "long" uses every item in the pack. */
 export function drawItems(items: readonly PackItem[], length: ListLength, rng: Rng): PackItem[] {
-  const count = LIST_LENGTH_COUNT[length];
-  if (count === 'all') return sample(items, items.length, rng);
-  return sample(items, count, rng);
+  return sample(items, listItemCount(items.length, length), rng);
 }
 
 export function slugify(text: string): string {

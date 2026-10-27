@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PackItem } from '../shared/types';
-import { canPlayBingo, drawItems, isPackUnlocked, itemsFromLines, slugify } from './pack';
+import { canPlayBingo, drawItems, isPackUnlocked, itemsFromLines, listItemCount, slugify } from './pack';
 import { seededRng } from './rng';
 
 const items: PackItem[] = Array.from({ length: 40 }, (_, i) => ({ id: `i${i}`, text: `Item ${i}` }));
@@ -19,6 +19,12 @@ describe('packs', () => {
     expect(normal).toHaveLength(30);
     expect(long).toHaveLength(40);
     expect(new Set(long.map((i) => i.id)).size).toBe(40);
+  });
+
+  it('counts list items, capped by the pack size', () => {
+    expect(listItemCount(100, 'quick')).toBe(15);
+    expect(listItemCount(10, 'normal')).toBe(10);
+    expect(listItemCount(42, 'long')).toBe(42);
   });
 
   it('a short pack just uses everything', () => {
