@@ -143,7 +143,7 @@ function closedCopy(reason: NonNullable<CloseReason>, code: string, youAreHost: 
     case 'full':
       return { title: 'Trip full', headline: `Trip ${code} is full`, sub: 'There is no space for anyone else right now.' };
     case 'update-needed':
-      return { title: 'Update needed', headline: 'This app needs an update', sub: 'Backseat Bingo has been updated. Reload to catch up; you stay in the trip.' };
+      return { title: 'Update needed', headline: 'This app needs an update', sub: 'Backseat Bingo has been updated. Reload to get the new version.' };
     case 'host-closed':
       return youAreHost
         ? { title: 'Trip over', headline: 'Trip closed', sub: 'The code no longer works.' }
