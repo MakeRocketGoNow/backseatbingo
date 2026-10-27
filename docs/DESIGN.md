@@ -71,3 +71,4 @@ Host approvals is a room setting: "auto" claims on tap and the host can undo; "h
 - **2026-10-26, resume.** An in-progress local game is persisted to localStorage and Home offers "Resume" so a reload or a phone sleep does not lose the board. Ended games are kept until the next game starts.
 - **2026-10-26, "play again".** Returns to Setup with the pack and player names remembered and the mode reset to Called It.
 - **2026-10-26, sample content.** `packs/family.json` holds sample items. Real lists live in `packs/private/`.
+- **2026-10-26, list size in rooms.** A room takes lists of up to 150 items of up to 100 characters (it was 500 of 200). Every update a room sends carries the list, and a long Called It game copies all of it, so at the old cap one update could be 100-250 KB on car signal. Real lists are far smaller. We kept sending the full snapshot rather than dropping the list during play, because the cap alone bounds the worst case.

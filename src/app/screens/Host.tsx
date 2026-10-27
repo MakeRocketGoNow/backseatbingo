@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
-import { MAX_NAME_LENGTH } from '@shared/types';
+import { MAX_ITEM_LENGTH, MAX_NAME_LENGTH, MAX_PACK_ITEMS } from '@shared/types';
+import { isRoomPack } from '@shared/validate';
 import { canPlayBingo, isPackUnlocked } from '@game/index';
 import { createRoom } from '@app/api';
 import { Page } from '@app/components/Page';
@@ -37,8 +38,15 @@ export function Host() {
   });
 
   const trimmed = name.trim();
+  // Checked here so a long custom list gets a clear reason instead of the server's "Invalid room request".
+  const fitsTrip = !!pack && isRoomPack(pack);
   const canStart =
-    !!pack && isPackUnlocked(pack.id) && trimmed.length > 0 && (settings.mode === 'spotit' || canPlayBingo(pack)) && !create.isPending;
+    !!pack &&
+    isPackUnlocked(pack.id) &&
+    fitsTrip &&
+    trimmed.length > 0 &&
+    (settings.mode === 'spotit' || canPlayBingo(pack)) &&
+    !create.isPending;
 
   function begin() {
     if (!pack || !canStart) return;
@@ -66,6 +74,12 @@ export function Host() {
         onChange={(e) => setName(e.target.value)}
       />
       <SettingsForm packs={packs} isLoading={isLoading} value={settings} onChange={setSettings} showApprovals />
+      {pack && !fitsTrip && (
+        <div className="notice" role="alert">
+          This list is too big for a trip. Trips take up to {MAX_PACK_ITEMS} items of up to {MAX_ITEM_LENGTH} characters.
+          Shorten it in Custom lists.
+        </div>
+      )}
       <button className="btn btn-primary btn-big" disabled={!canStart} onClick={begin}>
         {create.isPending ? 'Starting…' : 'Get a room code'}
       </button>

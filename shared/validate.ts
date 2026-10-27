@@ -1,10 +1,9 @@
 import type { Pack, RoomSettings } from './types';
+import { MAX_ITEM_LENGTH, MAX_PACK_ITEMS } from './types';
 
 // Shape checks for data that crosses the network into a room. The Worker runs
 // them on `POST /api/rooms` and the room runs them on every WebSocket message,
 // so a hand-written client cannot store what the app itself would never send.
-
-export const MAX_PACK_ITEMS = 500;
 
 export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
@@ -46,7 +45,7 @@ export function isRoomPack(v: unknown): v is Pack {
         i['id'].length <= 80 &&
         typeof i['text'] === 'string' &&
         i['text'].length > 0 &&
-        i['text'].length <= 200 &&
+        i['text'].length <= MAX_ITEM_LENGTH &&
         optionalString(i['emoji'], 16) &&
         optionalString(i['region'], 60) &&
         (i['rarity'] === undefined || i['rarity'] === 'common' || i['rarity'] === 'uncommon' || i['rarity'] === 'rare'),

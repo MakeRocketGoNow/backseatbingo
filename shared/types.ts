@@ -143,6 +143,15 @@ export const MAX_ROOM_PLAYERS = 12;
 export const MAX_NAME_LENGTH = 20;
 
 /**
+ * Largest list a room takes. Every update a room sends carries the list (and
+ * a long Called It game copies all of it), so the cap keeps updates small on
+ * car signal. Real lists are far shorter: the sample has 48 items of about 40
+ * characters.
+ */
+export const MAX_PACK_ITEMS = 150;
+export const MAX_ITEM_LENGTH = 100;
+
+/**
  * Everything a client needs to render a room. The Durable Object stores this
  * plus a private token map, and broadcasts this whole object after any change.
  */
