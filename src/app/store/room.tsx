@@ -290,7 +290,6 @@ export function RoomProvider({ code, name, children }: { code: string; name: str
   const conn = useMemo(
     () => new RoomConnection(code, getPlayerToken(), name, { onToast: (m) => toastRef.current(m) }),
     // The connection lives as long as the code does; a name change just updates it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [code],
   );
   useEffect(() => conn.setName(name), [conn, name]);
