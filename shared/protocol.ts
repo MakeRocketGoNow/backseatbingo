@@ -71,6 +71,23 @@ export const CLOSE_ROOM_CLOSED = 4000;
 export const CLOSE_LEFT = 4001;
 /** No room with that code: it never existed, expired, or closed while this device was away. */
 export const CLOSE_NOT_FOUND = 4002;
+/** The app is older than the server supports; it has to reload into the current build. */
+export const CLOSE_UPDATE_NEEDED = 4003;
+
+// Versions. The client sends `PROTOCOL_VERSION` as `v` on the socket URL,
+// which is the one part of the protocol that never changes shape. Bump
+// `PROTOCOL_VERSION` for any change, and raise `MIN_PROTOCOL_VERSION` to it
+// only when the change breaks older clients: every bump of the minimum sends
+// open trips on older builds to a reload, so additive changes should not.
+
+export const PROTOCOL_VERSION = 1;
+export const MIN_PROTOCOL_VERSION = 1;
+
+/** Whether the server still speaks to a client sending `v`. No `v` is version 1, from before versions were sent. */
+export function isSupportedClient(v: string | null, min: number = MIN_PROTOCOL_VERSION): boolean {
+  const version = v === null ? 1 : Number(v);
+  return Number.isInteger(version) && version >= min;
+}
 
 export type ServerMessage =
   | { type: 'state'; state: RoomState; you: string; ack?: number }

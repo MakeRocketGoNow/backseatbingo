@@ -1,5 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { MODE_LABELS } from '@shared/types';
+import { OFFLINE_MESSAGE } from '@app/api';
 import { useGame } from '@app/store/game';
 import { useOnline } from '@app/store/online';
 import { useSettings } from '@app/store/settings';
@@ -10,11 +11,6 @@ export function Home() {
   const navigate = useNavigate();
   const online = useOnline();
   const inProgress = game && game.status === 'playing';
-  // Trips need the network; local play never does. Keep the buttons visible
-  // so the layout holds, but make the reason plain before anyone taps.
-  const tripProps = online
-    ? {}
-    : { 'aria-disabled': true as const, onClick: (e: { preventDefault(): void }) => e.preventDefault() };
 
   return (
     <div className="page">
@@ -33,16 +29,19 @@ export function Home() {
               Resume {MODE_LABELS[game.mode]}
             </button>
           )}
+          {/* Trips need the network; local play never does. Keep the buttons
+              visible so the layout holds, but make the reason plain before
+              anyone taps. */}
           {!online && (
             <div className="notice center" role="status">
-              No signal. Trips need one; playing on this phone works without it.
+              {OFFLINE_MESSAGE}
             </div>
           )}
-          <Link to="/host" className="btn btn-primary btn-big" {...tripProps}>
+          <Link to="/host" className="btn btn-primary btn-big" disabled={!online}>
             Start a trip
             <span className="btn-sub">{online ? 'Everyone plays on their own phone' : 'Needs a signal'}</span>
           </Link>
-          <Link to="/join" className="btn btn-big" {...tripProps}>
+          <Link to="/join" className="btn btn-big" disabled={!online}>
             Join a trip
             <span className="btn-sub">{online ? 'Got a code or a link?' : 'Needs a signal'}</span>
           </Link>

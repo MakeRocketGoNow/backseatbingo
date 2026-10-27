@@ -34,7 +34,7 @@ The production build is installable and opens offline. `vite.config.ts` emits `s
 
 The Vite dev server never registers the worker. To try it, build and open the Worker's origin (`pnpm api`) or `pnpm preview`; if a stale worker ever gets in the way there, unregister it from the browser's devtools. Icons are generated from the SVGs in `public/icons/` by `scripts/icons.sh` (needs `rsvg-convert`).
 
-The winner screen's tip line reads its link from `VITE_TIP_URL`. `.env` holds a placeholder; put the real link in `.env.local`, which is gitignored. An empty value hides the line.
+The winner screen's tip line reads its link from `VITE_TIP_URL`. `.env` leaves it empty, which hides the line; put the real link in `.env.local`, which is gitignored.
 
 ## Deploy
 

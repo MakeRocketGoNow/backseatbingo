@@ -11,7 +11,7 @@ export function InstallCard() {
       {offer.kind === 'prompt' ? (
         <>
           <p className="small muted">Opens from your home screen, with or without a signal.</p>
-          <div className="btn-row">
+          <div className="row">
             <button className="btn btn-primary btn-auto" onClick={() => void offer.install()}>
               Add to home screen
             </button>
@@ -23,7 +23,7 @@ export function InstallCard() {
       ) : (
         <>
           <p className="small muted">In Safari, tap Share, then "Add to Home Screen".</p>
-          <div className="btn-row">
+          <div className="row">
             <button className="btn btn-ghost btn-auto" onClick={dismiss}>
               Got it
             </button>

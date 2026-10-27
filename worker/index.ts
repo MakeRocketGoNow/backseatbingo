@@ -1,5 +1,5 @@
 import type { CreateRoomRequest, CreateRoomResponse } from '../shared/protocol';
-import { CLOSE_NOT_FOUND } from '../shared/protocol';
+import { CLOSE_NOT_FOUND, CLOSE_UPDATE_NEEDED, isSupportedClient } from '../shared/protocol';
 import { MAX_NAME_LENGTH } from '../shared/types';
 import { isRecord, isRoomPack, isRoomSettings } from '../shared/validate';
 import { generateRoomCode, isValidRoomCode } from '../game/codes';
@@ -119,6 +119,7 @@ export default {
           return json({ error: 'Expected a WebSocket upgrade.' }, 426);
         }
         // A socket the browser can read the close code of, not a failed handshake it would retry.
+        if (!isSupportedClient(url.searchParams.get('v'))) return closedSocket(CLOSE_UPDATE_NEEDED, 'Update needed.');
         if (!stub) return closedSocket(CLOSE_NOT_FOUND, 'No such trip.');
         return stub.fetch(new Request(`https://room/ws${url.search}`, request));
       }

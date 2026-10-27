@@ -1,4 +1,5 @@
 import type { CreateRoomRequest, CreateRoomResponse, RoomInfoResponse } from '@shared/protocol';
+import { PROTOCOL_VERSION } from '@shared/protocol';
 
 export class ApiError extends Error {
   constructor(
@@ -50,7 +51,7 @@ export async function getRoomInfo(code: string): Promise<RoomInfoResponse | null
 
 export function roomSocketUrl(code: string, token: string): string {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${location.host}/api/rooms/${encodeURIComponent(code)}/ws?token=${encodeURIComponent(token)}`;
+  return `${proto}://${location.host}/api/rooms/${encodeURIComponent(code)}/ws?token=${encodeURIComponent(token)}&v=${PROTOCOL_VERSION}`;
 }
 
 export function joinLink(code: string): string {
