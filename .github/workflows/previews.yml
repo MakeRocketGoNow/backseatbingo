@@ -53,6 +53,21 @@ jobs:
         env:
           VITE_TIP_URL: ${{ secrets.VITE_TIP_URL }}
 
+      # The preview env empties `routes` so a preview never claims production's
+      # domain. Resolve the config the way the deploy will and stop if that
+      # ever stops holding, before anything reaches Cloudflare.
+      - name: Check the preview claims no routes
+        run: |
+          node --input-type=module -e "
+            import { unstable_readConfig } from 'wrangler';
+            const { routes, route } = unstable_readConfig({ env: 'preview' });
+            const claimed = [...(routes ?? []), ...(route ? [route] : [])];
+            if (claimed.length) {
+              console.log('::error::The preview env in wrangler.jsonc has routes: ' + JSON.stringify(claimed) + '. Set \"routes\": [] there.');
+              process.exit(1);
+            }
+          "
+
       # `--name` points the deploy at the preview's own Worker. The env has no
       # routes whatever production has, so the workers.dev address is the
       # Worker's only one.
