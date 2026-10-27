@@ -26,6 +26,8 @@ pnpm build                     # typecheck + Vite production build
 node scripts/smoke-room.mjs    # end-to-end room flow against pnpm api
 ```
 
+CI runs the tests and the build (which includes the typecheck) on every pull request and on pushes to `main`; deploys stay manual.
+
 ## Progressive web app
 
 The production build is installable and opens offline. `vite.config.ts` emits `sw.js` from `sw/sw.ts` with the bundle's file list baked in; the worker precaches the shell and assets, serves every navigation from the cached shell, and never touches `/api/`. A new deploy installs in the background and the app offers "A new version is ready. Reload" rather than swapping assets under a game in progress.
