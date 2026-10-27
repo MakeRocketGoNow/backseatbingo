@@ -18,6 +18,13 @@
       "name": "CREATE_ROOM_LIMITER",
       "namespace_id": "1001",
       "simple": { "limit": 10, "period": 60 }
+    },
+    {
+      // Room lookups and socket upgrades. Generous enough for a car of phones
+      // on one hotspot reconnecting, slow enough that guessing codes is not.
+      "name": "ROOM_LOOKUP_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 120, "period": 60 }
     }
   ],
   "observability": { "enabled": true }

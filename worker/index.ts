@@ -4,7 +4,7 @@ import { MAX_NAME_LENGTH } from '../shared/types';
 import { isRecord, isRoomPack, isRoomSettings } from '../shared/validate';
 import { generateRoomCode, isValidRoomCode } from '../game/codes';
 import { closedSocket } from './closed-socket';
-import type { Env } from './env';
+import type { Env, RateLimiter } from './env';
 import { RoomDO } from './room-do';
 
 export { RoomDO };
@@ -33,11 +33,15 @@ function isCreateRequest(v: unknown): v is CreateRoomRequest {
   );
 }
 
+async function allowed(limiter: RateLimiter | undefined, request: Request): Promise<boolean> {
+  if (!limiter) return true;
+  const { success } = await limiter.limit({ key: request.headers.get('cf-connecting-ip') ?? 'unknown' });
+  return success;
+}
+
 async function createRoom(request: Request, env: Env): Promise<Response> {
-  const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
-  if (env.CREATE_ROOM_LIMITER) {
-    const { success } = await env.CREATE_ROOM_LIMITER.limit({ key: ip });
-    if (!success) return json({ error: 'Too many trips started. Try again in a minute.' }, 429);
+  if (!(await allowed(env.CREATE_ROOM_LIMITER, request))) {
+    return json({ error: 'Too many trips started. Try again in a minute.' }, 429);
   }
   const length = Number(request.headers.get('content-length') ?? '0');
   if (length > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
@@ -74,6 +78,10 @@ export default {
     }
     const match = /^\/api\/rooms\/([A-Za-z]{4})(\/ws)?$/.exec(url.pathname);
     if (match) {
+      // There are only 24^4 codes; without a limit a script could find live rooms in minutes.
+      if (!(await allowed(env.ROOM_LOOKUP_LIMITER, request))) {
+        return json({ error: 'Too many requests. Try again in a minute.' }, 429);
+      }
       const code = match[1]!.toUpperCase();
       const stub = isValidRoomCode(code) ? env.ROOMS.get(env.ROOMS.idFromName(code)) : null;
       if (match[2]) {

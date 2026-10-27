@@ -9,4 +9,5 @@ export interface Env {
   ROOMS: DurableObjectNamespace<RoomDO>;
   ASSETS: Fetcher;
   CREATE_ROOM_LIMITER?: RateLimiter;
+  ROOM_LOOKUP_LIMITER?: RateLimiter;
 }
