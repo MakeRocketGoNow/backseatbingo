@@ -7,9 +7,11 @@ name: Previews
 # to set it up), so a fork inherits this file without harm.
 #
 # A preview is a whole Worker of its own, `backseatbingo-pr-<number>` on the
-# account's workers.dev subdomain. Rooms are Durable Objects, which belong to
-# the Worker that declares them, so each preview has rooms of its own and
-# production's are untouched. There is no database or bucket to share.
+# account's workers.dev subdomain, deployed from wrangler.jsonc's `preview`
+# env. Rooms are Durable Objects, which belong to the Worker that declares
+# them, so each preview has rooms of its own and production's are untouched.
+# Rate-limit counters are account-wide, so the env gives previews their own.
+# There is no database or bucket to share.
 
 on:
   pull_request:
@@ -61,10 +63,9 @@ jobs:
         env:
           VITE_TIP_URL: ${{ secrets.VITE_TIP_URL }}
 
-      # `--name` points the deploy at the preview's own Worker; the rest of
-      # wrangler.jsonc applies unchanged. With no routes in the config, the
-      # workers.dev address is the Worker's only one.
-      - run: pnpm exec wrangler deploy --name "$WORKER_NAME"
+      # `--name` points the deploy at the preview's own Worker. With no routes
+      # in the config, the workers.dev address is the Worker's only one.
+      - run: pnpm exec wrangler deploy --env preview --name "$WORKER_NAME"
 
       - name: Comment the preview URL
         uses: actions/github-script@v9

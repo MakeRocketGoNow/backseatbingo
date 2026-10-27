@@ -40,7 +40,7 @@ The winner screen's tip line reads its link from `VITE_TIP_URL`. `.env` holds a 
 
 Every push to `main` that passes the checks deploys from the same workflow. It needs two repository secrets, `CLOUDFLARE_API_TOKEN` (an API token with the Workers Scripts edit permission) and `CLOUDFLARE_ACCOUNT_ID`, and reads the tip link from an optional `VITE_TIP_URL` secret; with that one unset the tip line is hidden rather than built with the placeholder. The job uses the `production` environment, so protection rules such as a required reviewer can be added there.
 
-Pull requests can get a preview of their own: set the `CLOUDFLARE_WORKERS_SUBDOMAIN` repository variable to the account's workers.dev subdomain (the part before `.workers.dev`) and `.github/workflows/previews.yml` deploys each PR as its own Worker, `backseatbingo-pr-<number>`, comments the URL on the PR, and deletes the Worker when the PR closes. A preview has rooms of its own, since Durable Objects belong to the Worker that declares them, and never touches production. Until the variable is set, the preview jobs skip themselves.
+Pull requests can get a preview of their own: set the `CLOUDFLARE_WORKERS_SUBDOMAIN` repository variable to the account's workers.dev subdomain (the part before `.workers.dev`) and `.github/workflows/previews.yml` deploys each PR as its own Worker, `backseatbingo-pr-<number>`, comments the URL on the PR, and deletes the Worker when the PR closes. A preview has rooms of its own, since Durable Objects belong to the Worker that declares them, and its own rate-limit counters from the `preview` env in `wrangler.jsonc`, so it never touches production. Until the variable is set, the preview jobs skip themselves.
 
 To deploy by hand instead:
 
