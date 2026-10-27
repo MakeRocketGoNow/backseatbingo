@@ -5,10 +5,11 @@ on:
   push:
     branches: [main]
 
-# A newer push to the same PR makes the older run moot. Runs on main queue
-# instead, so a deploy in progress is never cancelled halfway.
+# A newer push to the same PR makes the older run moot. On main every push
+# gets its own group, so every commit is checked; only the deploy job below
+# runs one at a time.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -38,6 +39,12 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    # A deploy in progress is never cancelled halfway. GitHub keeps one waiting
+    # run per group, so pushes that land meanwhile collapse into a single
+    # deploy of the newest commit.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v5
 
