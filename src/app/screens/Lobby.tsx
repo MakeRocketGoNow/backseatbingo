@@ -50,8 +50,10 @@ export function Lobby() {
       <ConnectionBadge status={connection} />
       <div className="code-box">
         <div className="code-label">Room code</div>
-        <div className="code-big" aria-label={`Room code ${code.split('').join(' ')}`}>
-          {code}
+        <div className="code-big">
+          <span aria-hidden="true">{code}</span>
+          {/* Spaced out so screen readers spell the code instead of reading it as a word. */}
+          <span className="visually-hidden">{code.split('').join(' ')}</span>
         </div>
       </div>
       <div className="center">
@@ -68,9 +70,10 @@ export function Lobby() {
       <ul className="player-list">
         {room.players.map((p) => (
           <li key={p.id} className="player-item">
-            <span className={`dot ${p.connected ? 'dot-on' : 'dot-off'}`} aria-label={p.connected ? 'connected' : 'offline'} />
+            <span className={`dot ${p.connected ? 'dot-on' : 'dot-off'}`} aria-hidden="true" />
             <span className="grow">
               {p.name}
+              <span className="visually-hidden">{p.connected ? ', connected' : ', offline'}</span>
               {p.id === you && <span className="muted small"> (you)</span>}
             </span>
             {p.id === room.hostId && <span className="tag">host</span>}

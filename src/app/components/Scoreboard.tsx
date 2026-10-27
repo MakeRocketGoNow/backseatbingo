@@ -9,7 +9,7 @@ interface ScoreboardProps {
 /** Sticky strip of name + score, sorted descending. Always visible in-game. */
 export function Scoreboard({ standings, badges }: ScoreboardProps) {
   return (
-    <div className="scoreboard" aria-label="Scoreboard">
+    <div className="scoreboard" role="group" aria-label="Scoreboard">
       {standings.map((s) => (
         <div className={`score ${s.rank === 1 && s.score > 0 ? 'score-leader' : ''}`} key={s.player.id}>
           <span className="score-name">{s.player.name}</span>
