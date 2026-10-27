@@ -1,11 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { ClientMessage, CreateRoomRequest, RoomErrorCode, RoomInfoResponse, ServerMessage } from '../shared/protocol';
 import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED, isClientMessage } from '../shared/protocol';
-import type { RoomState } from '../shared/types';
 import { MAX_ROOM_PLAYERS } from '../shared/types';
 import { applyAction, createRoom, findPlayer, joinRoom, setConnected } from '../game/room';
 import { closedSocket } from './closed-socket';
 import type { Env } from './env';
+import { forgetDeparted, forgetLeaver, isMember, type Stored } from './stored';
 
 /**
  * One Durable Object per room. It stores the whole room under one key, keeps
@@ -19,14 +19,6 @@ const ALARM_SLACK_MS = 60 * 60 * 1000;
 const STORAGE_KEY = 'room';
 /** Sockets from devices not in the room yet: people on the Join screen, and anyone probing codes. */
 const MAX_UNJOINED_SOCKETS = MAX_ROOM_PLAYERS * 2;
-
-interface Stored {
-  room: RoomState;
-  /** Device token to player id. Never sent to clients. */
-  tokens: Record<string, string>;
-  /** Per device token, the client session and the highest seq applied from it. */
-  applied?: Record<string, { session: string; seq: number }>;
-}
 
 interface Attachment {
   token: string;
@@ -289,33 +281,6 @@ export class RoomDO extends DurableObject<Env> {
   override async alarm(): Promise<void> {
     await this.destroy();
   }
-}
-
-/** In the room now, not just known: a guest who left keeps a token mapping until it is forgotten. */
-function isMember(stored: Stored, token: string): boolean {
-  const id = stored.tokens[token];
-  return !!id && !!findPlayer(stored.room, id);
-}
-
-/**
- * Drop a departed guest's token, so join-and-leave loops cannot grow the
- * stored room without limit. Kept while the current game still lists them, so
- * rejoining mid-game gets their card or claims back.
- */
-function forgetLeaver(stored: Stored, token: string, playerId: string): Stored {
-  if (stored.room.game?.players.some((p) => p.id === playerId)) return stored;
-  const { [token]: _id, ...tokens } = stored.tokens;
-  const { [token]: _applied, ...applied } = stored.applied ?? {};
-  return { ...stored, tokens, applied };
-}
-
-/** A new round lists only the players in the room, so anyone who left mid-round is forgotten now. */
-function forgetDeparted(stored: Stored): Stored {
-  const present = new Set(stored.room.players.map((p) => p.id));
-  const keep = Object.entries(stored.tokens).filter(([, id]) => present.has(id));
-  const kept = new Set(keep.map(([token]) => token));
-  const applied = Object.fromEntries(Object.entries(stored.applied ?? {}).filter(([token]) => kept.has(token)));
-  return { ...stored, tokens: Object.fromEntries(keep), applied };
 }
 
 const WIRE_CODES: ReadonlySet<string> = new Set<RoomErrorCode>([

@@ -16,5 +16,5 @@
     "types": ["@cloudflare/workers-types"]
   },
   "include": ["./**/*.ts", "../game/**/*.ts", "../shared/**/*.ts"],
-  "exclude": ["../game/**/*.test.ts", "../shared/**/*.test.ts"]
+  "exclude": ["./**/*.test.ts", "../game/**/*.test.ts", "../shared/**/*.test.ts"]
 }

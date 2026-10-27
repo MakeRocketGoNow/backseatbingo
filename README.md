@@ -41,7 +41,7 @@ The Worker serves the static client and the `/api/*` routes from one deployment.
 - `shared/` types used by the client and the Worker.
 - `packs/` content packs as JSON. `family.json` is sample content; real lists go in the gitignored `packs/private/` and override a committed pack with the same id. Every pack is free in v1; `isPackUnlocked()` in `game/pack.ts` is the entitlement stub.
 - `src/app/` React client: `screens/`, `components/` (boards shared by local and room play, and room controls used on more than one screen), `store/` (local game, room connection, packs via TanStack Query, settings), `router.tsx`.
-- `worker/` Cloudflare Worker entry and the room Durable Object. Rules are not here; they are in `game/room.ts`.
+- `worker/` Cloudflare Worker entry and the room Durable Object. Rules are not here; they are in `game/room.ts`. `stored.ts` holds the room's pure token bookkeeping, unit tested like `game/`.
 - `scripts/` the room smoke test.
 
 ## License
