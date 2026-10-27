@@ -8,8 +8,8 @@ on:
 # A newer push to the same PR makes the older run moot. On main, runs never
 # cancel each other: one group orders them by push, so a deploy is never cut
 # off halfway and the newest commit always deploys last. GitHub keeps one
-# waiting run per group, so a push that lands while another waits replaces it
-# and the one it replaced is never checked here; it was checked on its PR.
+# waiting run per group, so a push that lands while another waits replaces it;
+# that commit never deploys, and the run that replaced it checks its changes.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
