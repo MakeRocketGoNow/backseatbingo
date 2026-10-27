@@ -63,7 +63,9 @@ export async function updateApp(): Promise<void> {
   if (reg) await reg.update().catch(() => undefined);
   // The installing worker is the newest build; a waiting one may be a deploy behind it.
   const worker = reg?.installing ?? reg?.waiting;
-  if (!worker) {
+  // With no controller, activating a worker fires no `controllerchange` here
+  // (the worker never claims clients); a page with none came from the network.
+  if (!worker || !navigator.serviceWorker.controller) {
     location.reload();
     return;
   }
