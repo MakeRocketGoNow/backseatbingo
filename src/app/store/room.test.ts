@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClientMessage, ServerMessage } from '@shared/protocol';
+import { PROTOCOL_VERSION } from '@shared/protocol';
 import type { RoomState, SpotItState } from '@shared/types';
 import { RoomConnection } from './room';
 
@@ -241,6 +242,16 @@ describe('RoomConnection when the room is gone', () => {
     conn.start();
     last().drop(4002);
     expect(conn.getSnapshot()).toMatchObject({ connection: 'closed', closeReason: 'not-found' });
+    vi.runAllTimers();
+    expect(FakeSocket.all).toHaveLength(1);
+  });
+
+  it('stops retrying and asks for a reload when the server says this build is too old', () => {
+    const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast: vi.fn() });
+    conn.start();
+    expect(new URL(last().url).searchParams.get('v')).toBe(String(PROTOCOL_VERSION));
+    last().drop(4003);
+    expect(conn.getSnapshot()).toMatchObject({ connection: 'closed', closeReason: 'update-needed' });
     vi.runAllTimers();
     expect(FakeSocket.all).toHaveLength(1);
   });

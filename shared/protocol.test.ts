@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isClientMessage } from './protocol';
+import { isClientMessage, isSupportedClient, PROTOCOL_VERSION } from './protocol';
 
 const settings = { mode: 'spotit', listLength: 'quick', pattern: 'line', approvals: 'auto' };
 const pack = { id: 'p', name: 'P', description: '', free: true, minAge: 0, items: [{ id: 'a', text: 'A' }] };
@@ -36,5 +36,28 @@ describe('isClientMessage', () => {
     ]) {
       expect(isClientMessage(m)).toBe(false);
     }
+  });
+});
+
+describe('isSupportedClient', () => {
+  it('treats a client that sends no version as version 1', () => {
+    expect(isSupportedClient(null, 1)).toBe(true);
+    expect(isSupportedClient(null, 2)).toBe(false);
+  });
+
+  it('accepts the minimum and anything newer', () => {
+    expect(isSupportedClient('2', 2)).toBe(true);
+    expect(isSupportedClient('3', 2)).toBe(true);
+    expect(isSupportedClient('1', 2)).toBe(false);
+  });
+
+  it('turns away a version it cannot read', () => {
+    expect(isSupportedClient('', 1)).toBe(false);
+    expect(isSupportedClient('abc', 1)).toBe(false);
+    expect(isSupportedClient('1.5', 1)).toBe(false);
+  });
+
+  it('accepts the current build', () => {
+    expect(isSupportedClient(String(PROTOCOL_VERSION))).toBe(true);
   });
 });

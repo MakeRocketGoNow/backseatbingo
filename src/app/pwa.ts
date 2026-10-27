@@ -51,3 +51,31 @@ export function registerServiceWorker(onUpdate: (apply: () => void) => void): vo
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start, { once: true });
 }
+
+/**
+ * Get onto the newest build now, for when the server has said this one is too
+ * old. A plain reload is not enough with a worker in control: it would serve
+ * the same cached shell again. So check for the new worker, wait for it to
+ * install, and switch to it; the `controllerchange` listener above reloads.
+ */
+export async function updateApp(): Promise<void> {
+  const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
+  if (reg) await reg.update().catch(() => undefined);
+  const worker = reg?.waiting ?? reg?.installing;
+  if (!worker) {
+    location.reload();
+    return;
+  }
+  if (worker.state !== 'installed') {
+    await new Promise<void>((resolve) => {
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' || worker.state === 'redundant') resolve();
+      });
+    });
+  }
+  if (worker.state === 'redundant') {
+    location.reload();
+    return;
+  }
+  worker.postMessage({ type: 'skip-waiting' });
+}
