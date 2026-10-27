@@ -158,6 +158,12 @@ async function main() {
   assert(closeCode === 4000, `socket closed with 4000 (got ${closeCode})`);
   const gone = await fetch(`${BASE}/api/rooms/${code}`);
   assert(gone.status === 404, 'closed room is gone');
+  const late = connect(code, guestToken);
+  const lateCode = await late.closed();
+  assert(lateCode === 4002, `a socket for a gone room is closed with 4002, not refused (got ${lateCode})`);
+  const invalid = connect('IIII', guestToken);
+  const invalidCode = await invalid.closed();
+  assert(invalidCode === 4002, `a socket for an invalid code is closed with 4002 (got ${invalidCode})`);
 
   console.log('\nSMOKE PASS');
   process.exit(0);
