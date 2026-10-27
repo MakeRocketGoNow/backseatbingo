@@ -4,12 +4,14 @@ import { BingoBoard } from '@app/components/BingoBoard';
 import { CalledItBoard } from '@app/components/CalledItBoard';
 import { CloseTripButton } from '@app/components/CloseTripButton';
 import { ConnectionBadge } from '@app/components/ConnectionBadge';
+import { InstallCard } from '@app/components/InstallCard';
 import { LeaveButton } from '@app/components/LeaveButton';
 import { Page } from '@app/components/Page';
 import { SettingsSheet } from '@app/components/SettingsSheet';
 import { WinnerView } from '@app/components/WinnerView';
 import { useDisplayName } from '@app/store/identity';
 import { RoomProvider, useRoom, type CloseReason } from '@app/store/room';
+import { updateApp } from '@app/pwa';
 import { Lobby } from './Lobby';
 
 export function RoomRoute({ code }: { code: string }) {
@@ -102,6 +104,7 @@ function RoomWinner() {
           <button className="btn btn-primary btn-big" onClick={() => setNextRound(true)}>
             Play again
           </button>
+          <InstallCard />
           <CloseTripButton />
           {/* Mounted only while open, so it starts from the room's current settings. */}
           {nextRound && (
@@ -139,6 +142,8 @@ function closedCopy(reason: NonNullable<CloseReason>, code: string, youAreHost: 
       return { title: 'Trip over', headline: `Trip ${code} has ended`, sub: 'The code no longer works.' };
     case 'full':
       return { title: 'Trip full', headline: `Trip ${code} is full`, sub: 'There is no space for anyone else right now.' };
+    case 'update-needed':
+      return { title: 'Update needed', headline: 'This app needs an update', sub: 'Backseat Bingo has been updated. Reload to get the new version.' };
     case 'host-closed':
       return youAreHost
         ? { title: 'Trip over', headline: 'Trip closed', sub: 'The code no longer works.' }
@@ -150,20 +155,40 @@ function Closed({ reason, youAreHost }: { reason: NonNullable<CloseReason>; youA
   const navigate = useNavigate();
   const { code } = useRoom();
   const copy = closedCopy(reason, code, youAreHost);
+  // The new build may take a while to download; show it is happening.
+  const [updating, setUpdating] = useState(false);
   return (
     <Page title={copy.title}>
       <div className="hero">
         <h2 className="hero-title">{copy.headline}</h2>
         <p className="hero-sub">{copy.sub}</p>
       </div>
-      <div className="btn-stack">
-        <button className="btn btn-primary btn-big" onClick={() => void navigate({ to: '/', replace: true })}>
-          Home
-        </button>
-        <Link to="/host" className="btn btn-outline">
-          {youAreHost ? 'Start another trip' : 'Host your own trip'}
-        </Link>
-      </div>
+      {reason === 'update-needed' ? (
+        <div className="btn-stack">
+          <button
+            className="btn btn-primary btn-big"
+            disabled={updating}
+            onClick={() => {
+              setUpdating(true);
+              void updateApp();
+            }}
+          >
+            {updating ? 'Updating…' : 'Reload'}
+          </button>
+          <button className="btn btn-outline" onClick={() => void navigate({ to: '/', replace: true })}>
+            Home
+          </button>
+        </div>
+      ) : (
+        <div className="btn-stack">
+          <button className="btn btn-primary btn-big" onClick={() => void navigate({ to: '/', replace: true })}>
+            Home
+          </button>
+          <Link to="/host" className="btn btn-outline">
+            {youAreHost ? 'Start another trip' : 'Host your own trip'}
+          </Link>
+        </div>
+      )}
     </Page>
   );
 }

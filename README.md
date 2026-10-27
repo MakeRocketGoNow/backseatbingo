@@ -26,6 +26,14 @@ pnpm build                     # typecheck + Vite production build
 node scripts/smoke-room.mjs    # end-to-end room flow against pnpm api
 ```
 
+## Progressive web app
+
+The production build is installable and opens offline. `vite.config.ts` emits `sw.js` from `sw/sw.ts` with the bundle's file list baked in; the worker precaches the shell and assets, serves every navigation from the cached shell, and never touches `/api/`. A new deploy installs in the background and the app offers "A new version is ready. Reload" rather than swapping assets under a game in progress.
+
+The Vite dev server never registers the worker. To try it, build and open the Worker's origin (`pnpm api`) or `pnpm preview`; if a stale worker ever gets in the way there, unregister it from the browser's devtools. Icons are generated from the SVGs in `public/icons/` by `scripts/icons.sh` (needs `rsvg-convert`).
+
+The winner screen's tip line reads its link from `VITE_TIP_URL`. `.env` leaves it empty, which hides the line; put the real link in `.env.local`, which is gitignored.
+
 ## Deploy
 
 ```bash

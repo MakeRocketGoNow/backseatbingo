@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import type { ClientAction, ClientMessage, ServerMessage } from '@shared/protocol';
-import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED } from '@shared/protocol';
+import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED, CLOSE_UPDATE_NEEDED } from '@shared/protocol';
 import type { RoomState } from '@shared/types';
 import { applyAction } from '@game/index';
 import { roomSocketUrl } from '@app/api';
@@ -19,8 +19,9 @@ export type ConnectionStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
 /**
  * `not-found`: the room was gone when this device connected (closed while it was away, or expired).
  * `full`: this device is not in the room and the room has no space.
+ * `update-needed`: this build is older than the server supports.
  */
-export type CloseReason = 'host-closed' | 'left' | 'not-found' | 'full' | null;
+export type CloseReason = 'host-closed' | 'left' | 'not-found' | 'full' | 'update-needed' | null;
 
 export interface RoomSnapshot {
   connection: ConnectionStatus;
@@ -160,6 +161,7 @@ export class RoomConnection {
       if (e.code === CLOSE_ROOM_CLOSED) return this.publish({ connection: 'closed', closeReason: 'host-closed' });
       if (e.code === CLOSE_LEFT) return this.publish({ connection: 'closed', closeReason: 'left' });
       if (e.code === CLOSE_NOT_FOUND) return this.publish({ connection: 'closed', closeReason: 'not-found' });
+      if (e.code === CLOSE_UPDATE_NEEDED) return this.publish({ connection: 'closed', closeReason: 'update-needed' });
       this.scheduleReconnect();
     };
     ws.onerror = () => {

@@ -654,6 +654,17 @@ a {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
+.toast-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.toast-action .btn-ghost {
+  color: var(--bg);
+}
+
 /* Lists */
 
 .list {
@@ -701,6 +712,39 @@ a {
   background: var(--surface);
   color: var(--muted);
   font-weight: 600;
+}
+
+/* Install offer (winner screen, host only) */
+
+.install-card {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.install-card p {
+  margin: 0;
+}
+
+.install-title {
+  font-weight: 700;
+}
+
+/* Tip line (winner screen, web only) */
+
+.tip-line {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.tip-line a {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* Pending claims (host approvals) */

@@ -3,6 +3,7 @@ import type { GameState } from '@shared/types';
 import { BINGO_PATTERN_LABELS, MODE_LABELS } from '@shared/types';
 import { bingoStandings, spotItStandings } from '@game/index';
 import { Page } from './Page';
+import { TipLine } from './TipLine';
 
 interface WinnerViewProps {
   game: GameState;
@@ -51,6 +52,7 @@ export function WinnerView({ game, children, headerExtra }: WinnerViewProps) {
       </ol>
 
       <div className="btn-stack">{children}</div>
+      <TipLine />
     </Page>
   );
 }
