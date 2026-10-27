@@ -39,18 +39,45 @@ async function allowed(limiter: RateLimiter | undefined, request: Request): Prom
   return success;
 }
 
+/**
+ * Read a body as text, giving up once it passes `max` bytes. A chunked body has
+ * no content-length, so the cap is enforced on what arrives, without buffering past it.
+ */
+async function readCapped(request: Request, max: number): Promise<string | null> {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    bytes.set(c, offset);
+    offset += c.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 async function createRoom(request: Request, env: Env): Promise<Response> {
   if (!(await allowed(env.CREATE_ROOM_LIMITER, request))) {
     return json({ error: 'Too many trips started. Try again in a minute.' }, 429);
   }
   const length = Number(request.headers.get('content-length') ?? '0');
   if (length > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
-  // A chunked body has no content-length, so measure what actually arrived too.
-  const raw = await request.arrayBuffer();
-  if (raw.byteLength > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
+  const raw = await readCapped(request, MAX_BODY_BYTES);
+  if (raw === null) return json({ error: 'Request too large.' }, 413);
   let body: unknown;
   try {
-    body = JSON.parse(new TextDecoder().decode(raw));
+    body = JSON.parse(raw);
   } catch {
     return json({ error: 'Expected JSON.' }, 400);
   }
