@@ -19,6 +19,7 @@ jobs:
   check:
     name: Test, typecheck and build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -38,6 +39,8 @@ jobs:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # A stuck deploy would otherwise hold production-deploy for six hours.
+    timeout-minutes: 15
     environment: production
     # A deploy in progress is never cancelled halfway. GitHub keeps one waiting
     # run per group, so pushes that land meanwhile collapse into a single
