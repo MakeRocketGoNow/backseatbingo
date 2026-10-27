@@ -354,6 +354,8 @@ a {
   gap: 8px;
   padding: 8px 14px;
   border-radius: 999px;
+  /* Transparent so a departed player's dashed border does not change the chip's size. */
+  border: 2px solid transparent;
   background: var(--surface);
   font-weight: 700;
   white-space: nowrap;
@@ -372,7 +374,8 @@ a {
 /* Left the trip mid-round: the score stands, the chip steps back. */
 .score-left:not(.score-leader) {
   background: transparent;
-  border: 2px dashed var(--border);
+  border-style: dashed;
+  border-color: var(--border);
 }
 
 /* Called It chips */
