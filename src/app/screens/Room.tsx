@@ -4,6 +4,7 @@ import { BingoBoard } from '@app/components/BingoBoard';
 import { CalledItBoard } from '@app/components/CalledItBoard';
 import { CloseTripButton } from '@app/components/CloseTripButton';
 import { ConnectionBadge } from '@app/components/ConnectionBadge';
+import { InstallCard } from '@app/components/InstallCard';
 import { LeaveButton } from '@app/components/LeaveButton';
 import { Page } from '@app/components/Page';
 import { SettingsSheet } from '@app/components/SettingsSheet';
@@ -103,6 +104,7 @@ function RoomWinner() {
             Play again
           </button>
           <CloseTripButton />
+          <InstallCard />
           {/* Mounted only while open, so it starts from the room's current settings. */}
           {nextRound && (
             <SettingsSheet

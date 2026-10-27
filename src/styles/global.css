@@ -718,6 +718,31 @@ a {
   font-weight: 600;
 }
 
+/* Install offer (winner screen, host only) */
+
+.install-card {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.install-card p {
+  margin: 0;
+}
+
+.install-title {
+  font-weight: 700;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 /* Pending claims (host approvals) */
 
 .chip-pending {
