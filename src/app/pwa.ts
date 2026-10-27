@@ -8,6 +8,8 @@
  * `skip-waiting`, after which the controller change reloads the page.
  */
 let registered = false;
+/** How long `updateApp` waits for a new build to download before reloading anyway. */
+const UPDATE_WAIT_MS = 30_000;
 
 export function registerServiceWorker(onUpdate: (apply: () => void) => void): void {
   if (registered || !import.meta.env.PROD || !('serviceWorker' in navigator)) return;
@@ -70,13 +72,16 @@ export async function updateApp(): Promise<void> {
     return;
   }
   if (worker.state !== 'installed') {
+    // A stalled download over a car's signal must not leave the button
+    // spinning for good; reloading lets the player try again.
     await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, UPDATE_WAIT_MS);
       worker.addEventListener('statechange', () => {
         if (worker.state === 'installed' || worker.state === 'redundant') resolve();
       });
     });
   }
-  if (worker.state === 'redundant') {
+  if (worker.state !== 'installed') {
     location.reload();
     return;
   }

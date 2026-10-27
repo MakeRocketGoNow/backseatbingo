@@ -155,6 +155,8 @@ function Closed({ reason, youAreHost }: { reason: NonNullable<CloseReason>; youA
   const navigate = useNavigate();
   const { code } = useRoom();
   const copy = closedCopy(reason, code, youAreHost);
+  // The new build may take a while to download; show it is happening.
+  const [updating, setUpdating] = useState(false);
   return (
     <Page title={copy.title}>
       <div className="hero">
@@ -163,8 +165,15 @@ function Closed({ reason, youAreHost }: { reason: NonNullable<CloseReason>; youA
       </div>
       {reason === 'update-needed' ? (
         <div className="btn-stack">
-          <button className="btn btn-primary btn-big" onClick={() => void updateApp()}>
-            Reload
+          <button
+            className="btn btn-primary btn-big"
+            disabled={updating}
+            onClick={() => {
+              setUpdating(true);
+              void updateApp();
+            }}
+          >
+            {updating ? 'Updating…' : 'Reload'}
           </button>
           <button className="btn btn-outline" onClick={() => void navigate({ to: '/', replace: true })}>
             Home
