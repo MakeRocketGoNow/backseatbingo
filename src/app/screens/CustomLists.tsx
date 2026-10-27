@@ -145,10 +145,11 @@ export function EditCustomList({ packId }: { packId?: string }) {
           : `Add ${BINGO_MIN_ITEMS - items.length} more for Bingo.`}
       </p>
       {(extra > 0 || tooLong > 0) && (
-        <div className="notice" role="alert">
-          {extra > 0 && `Lists can have up to ${MAX_PACK_ITEMS} things. Remove ${extra}. `}
+        // Polite, not an alert: it changes with every line typed and should not interrupt.
+        <div className="notice" role="status">
+          {extra > 0 && `Lists can have up to ${MAX_PACK_ITEMS} items. Remove ${extra}. `}
           {tooLong > 0 &&
-            `${tooLong === 1 ? 'One line is' : `${tooLong} lines are`} longer than ${MAX_ITEM_LENGTH} characters. Shorten ${tooLong === 1 ? 'it' : 'them'}.`}
+            `${tooLong === 1 ? 'One item is' : `${tooLong} items are`} longer than ${MAX_ITEM_LENGTH} characters. Shorten ${tooLong === 1 ? 'it' : 'them'}.`}
         </div>
       )}
       <button className="btn btn-primary btn-big" disabled={!canSave || save.isPending} onClick={onSave}>
