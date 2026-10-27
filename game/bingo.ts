@@ -129,8 +129,12 @@ export function callBingo(state: BingoState, playerId: string, at: number): Bing
   if (!hasPattern(card.marks, state.pattern)) return { ok: false, error: 'pattern-not-met' };
   const winners = [...state.winners, { playerId, at }];
   const next: BingoState = { ...state, winners };
-  const everyoneWon = state.players.every((p) => winners.some((w) => w.playerId === p.id));
-  return { ok: true, state: everyoneWon ? endBingoGame(next, at) : next };
+  return { ok: true, state: everyoneHasWon(next) ? endBingoGame(next, at) : next };
+}
+
+/** True once every player still in the game has bingo. Players who left do not hold the round open. */
+export function everyoneHasWon(state: BingoState): boolean {
+  return state.players.filter((p) => !p.left).every((p) => state.winners.some((w) => w.playerId === p.id));
 }
 
 export function endBingoGame(state: BingoState, at: number): BingoState {

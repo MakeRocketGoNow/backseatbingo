@@ -2,7 +2,7 @@ import type { ClientAction, ClientMessage } from '../shared/protocol';
 import type { RoomErrorCode } from '../shared/protocol';
 import type { GameState, Pack, Player, RoomPlayer, RoomSettings, RoomState } from '../shared/types';
 import { MAX_NAME_LENGTH, MAX_ROOM_PLAYERS } from '../shared/types';
-import { addBingoPlayer, callBingo, createBingoGame, endBingoGame, setMark, type BingoError } from './bingo';
+import { addBingoPlayer, callBingo, createBingoGame, endBingoGame, everyoneHasWon, setMark, type BingoError } from './bingo';
 import { canPlayBingo, canPlaySpotIt, drawItems } from './pack';
 import type { Rng } from './rng';
 import {
@@ -28,6 +28,12 @@ export interface RoomResult {
   room: RoomState;
   error?: { code: RoomError; message: string };
 }
+
+/**
+ * Everyone a round's game has listed, including people who left. Caps the
+ * roster so join-and-leave loops cannot grow a round without limit.
+ */
+const MAX_GAME_PLAYERS = MAX_ROOM_PLAYERS * 2;
 
 const ok = (room: RoomState): RoomResult => ({ room });
 const fail = (room: RoomState, code: RoomError, message: string): RoomResult => ({ room, error: { code, message } });
@@ -72,18 +78,38 @@ export function joinRoom(room: RoomState, player: Player, now: number, rng: Rng)
   const name = player.name.trim().slice(0, MAX_NAME_LENGTH);
   if (!name) return fail(room, 'not-joined', 'Pick a name first.');
   if (room.players.length >= MAX_ROOM_PLAYERS) return fail(room, 'room-full', 'This trip is full.');
-  if (room.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
-    return fail(room, 'name-taken', `Someone here is already called ${name}. Pick another name.`);
+  // Someone who left mid-round keeps their name on the scoreboard, so it stays taken until the round is over.
+  const taken = [...room.players, ...(room.game?.players ?? [])].some(
+    (p) => p.id !== player.id && p.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (taken) return fail(room, 'name-taken', `Someone here is already called ${name}. Pick another name.`);
+  const returning = room.game?.players.some((p) => p.id === player.id) ?? false;
+  if (!returning && room.game && room.game.players.length >= MAX_GAME_PLAYERS) {
+    return fail(room, 'room-full', 'This trip is full.');
   }
   const roomPlayer: RoomPlayer = { id: player.id, name, connected: true, joinedAt: now };
   let game = room.game;
-  if (game && room.status === 'playing') {
+  if (game && returning) {
+    // Back during the same round: their card or claims are waiting.
+    game = setLeft(game, player.id, false, name);
+  } else if (game && room.status === 'playing') {
+    const gamePlayer: Player = { id: player.id, name };
     game =
       game.mode === 'spotit'
-        ? addSpotItPlayer(game, roomPlayer)
-        : addBingoPlayer(game, roomPlayer, room.pack.items, rng);
+        ? addSpotItPlayer(game, gamePlayer)
+        : addBingoPlayer(game, gamePlayer, room.pack.items, rng);
   }
   return ok({ ...room, players: [...room.players, roomPlayer], game, updatedAt: now });
+}
+
+/** Mark a game player as having left the trip, or as back (optionally under a new name). */
+function setLeft(game: GameState, playerId: string, left: boolean, name?: string): GameState {
+  const players = game.players.map((p) => {
+    if (p.id !== playerId) return p;
+    const { left: _was, ...rest } = p;
+    return { ...rest, ...(name ? { name } : {}), ...(left ? { left: true } : {}) };
+  });
+  return { ...game, players };
 }
 
 export function setConnected(room: RoomState, playerId: string, connected: boolean, now: number): RoomState {
@@ -179,7 +205,16 @@ export function applyAction(
 
     case 'leave': {
       if (host) return ok({ ...room, status: 'closed', updatedAt: now });
-      return ok({ ...room, players: room.players.filter((p) => p.id !== playerId), updatedAt: now });
+      const players = room.players.filter((p) => p.id !== playerId);
+      if (!game || !game.players.some((p) => p.id === playerId)) return ok({ ...room, players, updatedAt: now });
+      // Their score stands for the rest of the round; they just stop holding it up.
+      let nextGame = setLeft(game, playerId, true);
+      let status = room.status;
+      if (nextGame.mode === 'bingo' && nextGame.status === 'playing' && everyoneHasWon(nextGame)) {
+        nextGame = endBingoGame(nextGame, now);
+        status = 'ended';
+      }
+      return ok({ ...room, players, game: nextGame, status, updatedAt: now });
     }
 
     case 'claim':
@@ -192,6 +227,9 @@ export function applyAction(
       if (action.type !== 'claim') {
         const denied = hostOnly();
         if (denied) return denied;
+      }
+      if (action.type === 'reassign' && game.players.find((p) => p.id === action.playerId)?.left) {
+        return fail(room, 'unknown-player', 'They have left the trip.');
       }
       const r =
         action.type === 'claim'

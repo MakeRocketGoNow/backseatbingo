@@ -174,6 +174,67 @@ describe('Bingo in a room', () => {
   });
 });
 
+describe('leaving mid-round', () => {
+  function spotIt() {
+    const r = must(applyAction(room(), 'h', { type: 'start' }, 3, rng()));
+    const item = r.game?.mode === 'spotit' ? r.game.items[0]!.id : '';
+    return { r: must(applyAction(r, 'g1', { type: 'claim', itemId: item }, 4, rng())), item };
+  }
+
+  it('keeps their claims and score but marks them as left', () => {
+    const { r, item } = spotIt();
+    const left = must(applyAction(r, 'g1', { type: 'leave' }, 5, rng()));
+    expect(left.players.map((p) => p.id)).toEqual(['h']);
+    if (left.game?.mode !== 'spotit') throw new Error('mode');
+    expect(left.game.players.find((p) => p.id === 'g1')).toEqual({ id: 'g1', name: 'Kid', left: true });
+    expect(left.game.claims[item]?.playerId).toBe('g1');
+    const other = left.game.items[1]!.id;
+    const handed = must(applyAction(left, 'h', { type: 'claim', itemId: other }, 6, rng()));
+    expect(applyAction(handed, 'h', { type: 'reassign', itemId: other, playerId: 'g1' }, 7, rng()).error?.code).toBe(
+      'unknown-player',
+    );
+  });
+
+  it('reserves their name for the round, and gives everything back if they return', () => {
+    const { r, item } = spotIt();
+    const left = must(applyAction(r, 'g1', { type: 'leave' }, 5, rng()));
+    expect(joinRoom(left, { id: 'g2', name: 'kid' }, 6, rng()).error?.code).toBe('name-taken');
+    const back = must(joinRoom(left, { id: 'g1', name: 'Kiddo' }, 7, rng()));
+    expect(back.players.find((p) => p.id === 'g1')?.name).toBe('Kiddo');
+    if (back.game?.mode !== 'spotit') throw new Error('mode');
+    expect(back.game.players.find((p) => p.id === 'g1')).toEqual({ id: 'g1', name: 'Kiddo' });
+    expect(back.game.claims[item]?.playerId).toBe('g1');
+  });
+
+  it('the next round starts without them and frees their name', () => {
+    const { r } = spotIt();
+    let s = must(applyAction(r, 'g1', { type: 'leave' }, 5, rng()));
+    s = must(applyAction(s, 'h', { type: 'newRound', settings }, 6, rng()));
+    expect(s.game?.players.map((p) => p.id)).toEqual(['h']);
+    expect(joinRoom(s, { id: 'g2', name: 'Kid' }, 7, rng()).error).toBeUndefined();
+  });
+
+  it('ends a Bingo round when everyone still playing has bingo', () => {
+    let r = must(applyAction(room({ mode: 'bingo', pattern: 'corners' }), 'h', { type: 'start' }, 3, rng()));
+    for (const c of [0, 4, 20, 24]) r = must(applyAction(r, 'h', { type: 'mark', cell: c }, 4, rng()));
+    r = must(applyAction(r, 'h', { type: 'bingo' }, 5, rng()));
+    expect(r.status).toBe('playing');
+    r = must(applyAction(r, 'g1', { type: 'leave' }, 6, rng()));
+    expect(r.status).toBe('ended');
+    expect(r.game?.status).toBe('ended');
+  });
+
+  it('caps a round at twice the room size, counting people who left', () => {
+    let r = must(applyAction(room(), 'h', { type: 'start' }, 3, rng()));
+    for (let i = 0; i < MAX_ROOM_PLAYERS * 2 - 2; i++) {
+      r = must(joinRoom(r, { id: `x${i}`, name: `X${i}` }, 4, rng()));
+      r = must(applyAction(r, `x${i}`, { type: 'leave' }, 5, rng()));
+    }
+    expect(r.game?.players).toHaveLength(MAX_ROOM_PLAYERS * 2);
+    expect(joinRoom(r, { id: 'late', name: 'Late' }, 6, rng()).error?.code).toBe('room-full');
+  });
+});
+
 describe('rounds and leaving', () => {
   it('newRound keeps players and applies new settings', () => {
     let r = must(applyAction(room(), 'h', { type: 'start' }, 3, rng()));

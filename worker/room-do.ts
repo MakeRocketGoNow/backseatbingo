@@ -244,6 +244,7 @@ export class RoomDO extends DurableObject<Env> {
       applied: att.session ? { ...stored.applied, [att.token]: { session: att.session, seq: msg.seq } } : stored.applied,
     };
     if (msg.type === 'leave') next = forgetLeaver(next, att.token, playerId);
+    if (msg.type === 'start' || msg.type === 'newRound') next = forgetDeparted(next);
     await this.save(next);
     this.broadcast(next, ws, msg.seq);
 
@@ -306,6 +307,15 @@ function forgetLeaver(stored: Stored, token: string, playerId: string): Stored {
   const { [token]: _id, ...tokens } = stored.tokens;
   const { [token]: _applied, ...applied } = stored.applied ?? {};
   return { ...stored, tokens, applied };
+}
+
+/** A new round lists only the players in the room, so anyone who left mid-round is forgotten now. */
+function forgetDeparted(stored: Stored): Stored {
+  const present = new Set(stored.room.players.map((p) => p.id));
+  const keep = Object.entries(stored.tokens).filter(([, id]) => present.has(id));
+  const kept = new Set(keep.map(([token]) => token));
+  const applied = Object.fromEntries(Object.entries(stored.applied ?? {}).filter(([token]) => kept.has(token)));
+  return { ...stored, tokens: Object.fromEntries(keep), applied };
 }
 
 const WIRE_CODES: ReadonlySet<string> = new Set<RoomErrorCode>([

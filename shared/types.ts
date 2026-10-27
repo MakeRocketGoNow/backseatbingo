@@ -47,6 +47,12 @@ export const BINGO_PATTERN_LABELS: Record<BingoPattern, string> = {
 export interface Player {
   id: string;
   name: string;
+  /**
+   * Rooms only: this player left the trip during the round. Their score and
+   * card stay, but they are out of the pickers and of "everyone has bingo".
+   * Rejoining clears it; the next round starts without them.
+   */
+  left?: boolean;
 }
 
 /**
