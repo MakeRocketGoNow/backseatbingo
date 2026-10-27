@@ -188,6 +188,7 @@ describe('leaving mid-round', () => {
     if (left.game?.mode !== 'spotit') throw new Error('mode');
     expect(left.game.players.find((p) => p.id === 'g1')).toEqual({ id: 'g1', name: 'Kid', left: true });
     expect(left.game.claims[item]?.playerId).toBe('g1');
+    expect(applyAction(left, 'h', { type: 'claim', itemId: item }, 5, rng()).error?.message).toBe('Kid got it');
     const other = left.game.items[1]!.id;
     const handed = must(applyAction(left, 'h', { type: 'claim', itemId: other }, 6, rng()));
     expect(applyAction(handed, 'h', { type: 'reassign', itemId: other, playerId: 'g1' }, 7, rng()).error?.code).toBe(

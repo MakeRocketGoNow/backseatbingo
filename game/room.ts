@@ -146,7 +146,8 @@ function claimerName(room: RoomState, itemId: string): string {
   const g = room.game;
   if (!g || g.mode !== 'spotit') return 'Someone';
   const c = g.claims[itemId];
-  return (c && findPlayer(room, c.playerId)?.name) ?? 'Someone';
+  // The game's roster, not the room's: someone who left mid-round still holds their claims.
+  return (c && g.players.find((p) => p.id === c.playerId)?.name) ?? 'Someone';
 }
 
 /** Apply one client action on behalf of a player who is already in the room. */
