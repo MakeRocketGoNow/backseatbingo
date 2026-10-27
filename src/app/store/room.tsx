@@ -87,6 +87,7 @@ export class RoomConnection {
   send(action: ClientAction): void {
     const msg: ClientMessage = { ...action, seq: ++this.seq };
     if (REPLAYABLE.has(action.type)) {
+      if (this.server) msg.round = this.server.round;
       this.pending.push(msg);
     } else if (this.ws?.readyState !== WebSocket.OPEN) {
       // Round and membership changes are not queued, so say so rather than drop them silently.
@@ -166,10 +167,9 @@ export class RoomConnection {
       case 'state': {
         this.server = msg.state;
         this.you = msg.you;
-        if (msg.ack !== undefined) {
-          const ack = msg.ack;
-          this.pending = this.pending.filter((p) => p.seq > ack);
-        }
+        const ack = msg.ack ?? 0;
+        // Taps from an earlier round would be rejected; stop replaying them.
+        this.pending = this.pending.filter((p) => p.seq > ack && (p.round === undefined || p.round === msg.state.round));
         if (msg.state.status === 'closed') {
           this.publish({ connection: 'closed', closeReason: 'host-closed', needsName: false });
         } else {

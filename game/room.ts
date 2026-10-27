@@ -1,4 +1,4 @@
-import type { ClientAction } from '../shared/protocol';
+import type { ClientAction, ClientMessage } from '../shared/protocol';
 import type { RoomErrorCode } from '../shared/protocol';
 import type { GameState, Pack, Player, RoomPlayer, RoomSettings, RoomState } from '../shared/types';
 import { MAX_NAME_LENGTH, MAX_ROOM_PLAYERS } from '../shared/types';
@@ -131,7 +131,7 @@ function claimerName(room: RoomState, itemId: string): string {
 export function applyAction(
   room: RoomState,
   playerId: string,
-  action: ClientAction,
+  action: ClientAction & Pick<ClientMessage, 'round'>,
   now: number,
   rng: Rng,
 ): RoomResult {
@@ -140,6 +140,7 @@ export function applyAction(
   const host = isHost(room, playerId);
   const hostOnly = (): RoomResult | null => (host ? null : fail(room, 'not-host', 'Only the host can do that.'));
   const game = room.game;
+  const staleRound = action.round !== undefined && action.round !== room.round;
 
   switch (action.type) {
     case 'join':
@@ -190,6 +191,7 @@ export function applyAction(
     case 'reassign':
     case 'approve': {
       if (room.status !== 'playing' || !game) return fail(room, 'bad-status', 'No game is running.');
+      if (staleRound) return fail(room, 'bad-status', 'That round is over.');
       if (game.mode !== 'spotit') return fail(room, 'wrong-mode', 'That is not a Called It game.');
       if (action.type !== 'claim') {
         const denied = hostOnly();
@@ -214,6 +216,7 @@ export function applyAction(
     case 'unmark':
     case 'bingo': {
       if (room.status !== 'playing' || !game) return fail(room, 'bad-status', 'No game is running.');
+      if (staleRound) return fail(room, 'bad-status', 'That round is over.');
       if (game.mode !== 'bingo') return fail(room, 'wrong-mode', 'That is not a Bingo game.');
       const r =
         action.type === 'bingo'

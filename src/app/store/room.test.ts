@@ -156,6 +156,25 @@ describe('RoomConnection', () => {
   });
 });
 
+describe('RoomConnection across rounds', () => {
+  it('stops replaying taps once a new round starts', () => {
+    const conn = connected();
+    last().drop();
+    conn.send({ type: 'claim', itemId: 'cow' });
+    expect(last().sent.length).toBe(1);
+    vi.runOnlyPendingTimers();
+    const ws = last();
+    ws.open();
+    expect(ws.sent.find((m) => m.type === 'claim')?.round).toBe(1);
+    ws.receive({ type: 'state', state: { ...room(), round: 2 }, you: 'g', ack: 0 });
+    expect(claimed(conn, 'cow')).toBe(false);
+    ws.drop();
+    vi.runOnlyPendingTimers();
+    last().open();
+    expect(last().sent.map((m) => m.type)).toEqual(['join']);
+  });
+});
+
 describe('RoomConnection while offline', () => {
   it('tells the user a host action cannot be sent instead of dropping it', () => {
     const onToast = vi.fn();

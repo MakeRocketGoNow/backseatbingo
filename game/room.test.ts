@@ -186,6 +186,15 @@ describe('rounds and leaving', () => {
     expect(r.game?.players.map((p) => p.id)).toEqual(['h', 'g1']);
   });
 
+  it('rejects a game tap made in an earlier round', () => {
+    let r = must(applyAction(room(), 'h', { type: 'start' }, 3, rng()));
+    const itemId = r.game?.mode === 'spotit' ? r.game.items[0]!.id : '';
+    r = must(applyAction(r, 'h', { type: 'newRound', settings }, 4, rng()));
+    expect(r.round).toBe(2);
+    expect(applyAction(r, 'g1', { type: 'claim', itemId, round: 1 }, 5, rng()).error?.message).toBe('That round is over.');
+    expect(applyAction(r, 'g1', { type: 'mark', cell: 0, round: 1 }, 5, rng()).error?.code).toBe('bad-status');
+  });
+
   it('a guest leaving is removed; the host leaving or closing ends the room', () => {
     const r = room();
     const left = must(applyAction(r, 'g1', { type: 'leave' }, 3, rng()));

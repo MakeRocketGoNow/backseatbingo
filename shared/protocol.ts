@@ -42,7 +42,11 @@ export type ClientAction =
   | { type: 'leave' }
   | { type: 'close' };
 
-export type ClientMessage = ClientAction & { seq: number };
+export type ClientMessage = ClientAction & {
+  seq: number;
+  /** The round a game tap was made in, so a tap queued offline cannot land on the next round's list or card. */
+  round?: number;
+};
 
 export type RoomErrorCode =
   | 'bad-message'
@@ -72,6 +76,7 @@ export type ServerMessage =
 /** Checks every field a client message carries; the room trusts nothing else about it. */
 export function isClientMessage(v: unknown): v is ClientMessage {
   if (!isRecord(v) || !Number.isInteger(v['seq'])) return false;
+  if (v['round'] !== undefined && !Number.isInteger(v['round'])) return false;
   switch (v['type'] as ClientAction['type']) {
     case 'join':
       return typeof v['name'] === 'string';
