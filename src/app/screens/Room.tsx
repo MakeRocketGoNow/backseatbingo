@@ -103,8 +103,8 @@ function RoomWinner() {
           <button className="btn btn-primary btn-big" onClick={() => setNextRound(true)}>
             Play again
           </button>
-          <CloseTripButton />
           <InstallCard />
+          <CloseTripButton />
           {/* Mounted only while open, so it starts from the room's current settings. */}
           {nextRound && (
             <SettingsSheet
