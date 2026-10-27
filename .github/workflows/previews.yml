@@ -41,8 +41,6 @@ jobs:
     env:
       WORKER_NAME: backseatbingo-pr-${{ github.event.pull_request.number }}
       PREVIEW_URL: https://backseatbingo-pr-${{ github.event.pull_request.number }}.${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v5
 
@@ -66,7 +64,12 @@ jobs:
       # `--name` points the deploy at the preview's own Worker. The env has no
       # routes whatever production has, so the workers.dev address is the
       # Worker's only one.
+      # The token is scoped to this step, so install scripts and the PR's own
+      # build code never see it.
       - run: pnpm exec wrangler deploy --env preview --name "$WORKER_NAME"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Comment the preview URL
         uses: actions/github-script@v9
