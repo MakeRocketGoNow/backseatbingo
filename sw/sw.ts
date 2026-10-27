@@ -14,6 +14,8 @@ declare const self: ServiceWorkerGlobalScope;
 export {};
 
 const SHELL = '/';
+/** Only these are stored at runtime. Any other path that is not a file gets the SPA page back with a 200, which must not be cached under that name. */
+const RUNTIME = ['/assets/', '/icons/'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -60,7 +62,8 @@ async function cacheFirst(req: Request): Promise<Response> {
   const cached = await caches.match(req);
   if (cached) return cached;
   const res = await fetch(req);
-  if (res.ok && res.type === 'basic') {
+  const path = new URL(req.url).pathname;
+  if (res.ok && res.type === 'basic' && RUNTIME.some((prefix) => path.startsWith(prefix))) {
     const cache = await caches.open(__CACHE_NAME__);
     void cache.put(req, res.clone());
   }
