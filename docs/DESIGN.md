@@ -62,7 +62,7 @@ The service worker is hand-written (`sw/`) and emitted by a small Vite plugin ra
 
 ## Decisions log
 
-- **2026-10-26, Phase 3 scope.** No PWA plugin; the worker is a few lines and the plugin that emits it is smaller than the configuration one would need. Updates never interrupt a game. The tip link is a build-time variable with a placeholder in the repo, so the public source never carries the real link, and the same mechanism hides the line in the iOS build.
+- **2026-10-26, Phase 3 scope.** No PWA plugin; the worker is a few lines and the plugin that emits it is smaller than the configuration one would need. Updates never interrupt a game. The tip link is a build-time variable left empty in the repo, so the public source never carries the real link and a build without it shows no tip line, and the same mechanism hides the line in the iOS build.
 
 - **2026-10-26, Phase 2 scope.** No renaming mid-game. Host approvals ship in Phase 2 with "auto" as the default.
 - **2026-10-26, new rounds.** "Play again" in a room starts the next round immediately with the host's chosen settings rather than returning everyone to the lobby; latecomers can still join mid-game. The lobby exists for the first gathering only.
