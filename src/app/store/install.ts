@@ -59,6 +59,19 @@ export function isIosSafari(): boolean {
 
 export type InstallOffer = { kind: 'prompt'; install: () => Promise<void> } | { kind: 'ios-hint' } | null;
 
+/** Which offer fits, from what the browser and the host's past answer say. */
+export function offerKind(state: {
+  dismissed: boolean;
+  standalone: boolean;
+  canPrompt: boolean;
+  iosSafari: boolean;
+}): 'prompt' | 'ios-hint' | null {
+  if (state.dismissed || state.standalone) return null;
+  if (state.canPrompt) return 'prompt';
+  if (state.iosSafari) return 'ios-hint';
+  return null;
+}
+
 /**
  * What to offer the host once a trip has gone well: Chrome's own prompt
  * where it exists, a hint on iOS Safari, nothing once installed or declined.
@@ -68,8 +81,8 @@ export function useInstallOffer(): { offer: InstallOffer; dismiss: () => void } 
   const [{ dismissed }, setPrefs] = prefs.use();
   const dismiss = () => setPrefs({ dismissed: true });
 
-  if (dismissed || isStandalone()) return { offer: null, dismiss };
-  if (event) {
+  const kind = offerKind({ dismissed, standalone: isStandalone(), canPrompt: event !== null, iosSafari: isIosSafari() });
+  if (kind === 'prompt' && event) {
     return {
       offer: {
         kind: 'prompt',
@@ -84,6 +97,5 @@ export function useInstallOffer(): { offer: InstallOffer; dismiss: () => void } 
       dismiss,
     };
   }
-  if (isIosSafari()) return { offer: { kind: 'ios-hint' }, dismiss };
-  return { offer: null, dismiss };
+  return { offer: kind === 'ios-hint' ? { kind } : null, dismiss };
 }
