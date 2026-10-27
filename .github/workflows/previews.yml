@@ -56,8 +56,11 @@ jobs:
       # `--name` points the deploy at the preview's own Worker. The env has no
       # routes whatever production has, so the workers.dev address is the
       # Worker's only one.
-      # The token is scoped to this step, so install scripts and the PR's own
-      # build code never see it.
+      # The token is scoped to this step, so `pnpm install` and `pnpm build`
+      # never see it. Wrangler still comes from the PR's lockfile and reads the
+      # PR's wrangler.jsonc, so this narrows exposure rather than isolating it;
+      # a separate preview token (see the README) keeps production's out of
+      # reach.
       - run: pnpm exec wrangler deploy --env preview --name "$WORKER_NAME"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
