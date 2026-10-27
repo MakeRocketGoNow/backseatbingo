@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import type { ClientMessage, CreateRoomRequest, RoomErrorCode, RoomInfoResponse, ServerMessage } from '../shared/protocol';
 import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED, isClientMessage } from '../shared/protocol';
 import type { RoomState } from '../shared/types';
+import { MAX_ROOM_PLAYERS } from '../shared/types';
 import { applyAction, createRoom, joinRoom, setConnected } from '../game/room';
 import { closedSocket } from './closed-socket';
 import type { Env } from './env';
@@ -15,6 +16,8 @@ import type { Env } from './env';
 
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 const STORAGE_KEY = 'room';
+/** Sockets from devices not in the room yet: people on the Join screen, and anyone probing codes. */
+const MAX_UNJOINED_SOCKETS = MAX_ROOM_PLAYERS * 2;
 
 interface Stored {
   room: RoomState;
@@ -121,6 +124,11 @@ export class RoomDO extends DurableObject<Env> {
     if (!stored || stored.room.status === 'closed') return closedSocket(CLOSE_NOT_FOUND, 'No such trip.');
     const token = url.searchParams.get('token') ?? '';
     if (token.length < 16 || token.length > 64) return new Response('Bad token.', { status: 400 });
+    // Anyone with the code can open a socket. Players always get in; strangers
+    // who have not joined are capped so they cannot pile up sockets on the room.
+    if (!stored.tokens[token] && this.unjoinedSockets(stored) >= MAX_UNJOINED_SOCKETS) {
+      return new Response('Too many connections.', { status: 429 });
+    }
 
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
@@ -129,6 +137,13 @@ export class RoomDO extends DurableObject<Env> {
     server.serializeAttachment(attachment);
     // The client's `join` marks it connected and sends everyone one snapshot.
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  private unjoinedSockets(stored: Stored): number {
+    return this.ctx.getWebSockets().filter((ws) => {
+      const att = ws.deserializeAttachment() as Attachment | null;
+      return !att || !stored.tokens[att.token];
+    }).length;
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {
