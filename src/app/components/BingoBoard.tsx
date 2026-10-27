@@ -146,7 +146,8 @@ function CardView({ card, game, player, showName, onCellTap, onBingo }: CardView
   return (
     <>
       {showName && <h2 className="center">{player.name}</h2>}
-      <div className="bingo-card" role="grid" aria-label={`${player.name}'s bingo card`}>
+      {/* Plain toggle buttons in a group: a grid role would need rows and would hide aria-pressed. */}
+      <div className="bingo-card" role="group" aria-label={`${player.name}'s bingo card`}>
         {card.cells.map((item, i) => {
           const free = i === BINGO_FREE_INDEX;
           const marked = card.marks[i] === true;
@@ -156,7 +157,6 @@ function CardView({ card, game, player, showName, onCellTap, onBingo }: CardView
           return (
             <button
               key={i}
-              role="gridcell"
               className={cls}
               aria-pressed={marked}
               disabled={free || game.status !== 'playing'}
