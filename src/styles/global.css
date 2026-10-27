@@ -661,10 +661,6 @@ a {
   text-align: left;
 }
 
-.toast-action > span {
-  flex: 1;
-}
-
 .toast-action .btn-ghost {
   color: var(--bg);
 }
@@ -735,12 +731,6 @@ a {
 
 .install-title {
   font-weight: 700;
-}
-
-.btn-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
 }
 
 /* Tip line (winner screen, web only) */

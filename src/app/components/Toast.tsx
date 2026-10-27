@@ -51,7 +51,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {toast && (
         <div className={`toast ${toast.action ? 'toast-action' : ''}`} role="status" aria-live="polite">
-          <span>{toast.message}</span>
+          <span className="grow">{toast.message}</span>
           {toast.action && (
             <>
               <button
