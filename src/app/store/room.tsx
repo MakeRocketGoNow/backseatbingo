@@ -48,7 +48,7 @@ interface Callbacks {
 export class RoomConnection {
   private ws: WebSocket | null = null;
   private seq = 0;
-  /** Lets the room tell this page's resent taps from new ones; `seq` restarts on reload. */
+  /** Lets the room tell this connection's resent taps from new ones; `seq` restarts with each connection object. */
   private readonly session = crypto.randomUUID();
   private pending: ClientMessage[] = [];
   private attempt = 0;

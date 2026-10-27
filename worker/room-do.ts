@@ -9,8 +9,8 @@ import type { Env } from './env';
 
 /**
  * One Durable Object per room. It stores the whole room under one key, keeps
- * WebSockets through hibernation, and deletes itself 24 hours after the last
- * message. All rules live in game/room.ts; this class only parses, checks the
+ * WebSockets through hibernation, and deletes itself about 24 hours after the
+ * last change it saved (heartbeats and rejected messages do not count). All rules live in game/room.ts; this class only parses, checks the
  * caller's identity, persists and broadcasts.
  */
 
@@ -30,7 +30,7 @@ interface Stored {
 
 interface Attachment {
   token: string;
-  /** Set by `join`; the client's page-load session. */
+  /** Set by `join`; the client connection's session. */
   session?: string;
 }
 

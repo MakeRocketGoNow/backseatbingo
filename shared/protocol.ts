@@ -28,7 +28,7 @@ export interface RoomInfoResponse {
 
 export type ClientAction =
   /**
-   * `session` is random per page load. With `seq`, it lets the room recognise
+   * `session` is random per room connection (`seq` restarts with it). With `seq`, it lets the room recognise
    * a tap it already applied when the client resends it after losing the ack.
    */
   | { type: 'join'; name: string; session?: string }
