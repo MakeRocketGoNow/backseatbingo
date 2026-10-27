@@ -4,9 +4,9 @@ import { useToast } from './Toast';
 
 /** Registers the service worker and offers a reload when a new build is waiting. */
 export function PwaUpdates() {
-  const toast = useToast();
+  const { show } = useToast();
   useEffect(() => {
-    registerServiceWorker((apply) => toast.show('A new version is ready.', { action: { label: 'Reload', onClick: apply } }));
-  }, [toast]);
+    registerServiceWorker((apply) => show('A new version is ready.', { action: { label: 'Reload', onClick: apply } }));
+  }, [show]);
   return null;
 }
