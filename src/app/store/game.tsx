@@ -16,8 +16,8 @@ import { isRecord } from './localStore';
 /**
  * The local (single-device) game store. It is a thin wrapper around the pure
  * game functions: every action feeds the current state through one of them
- * and keeps the result. The Phase 2 room store will expose the same shape but
- * send actions over a WebSocket and replace state with server snapshots.
+ * and keeps the result. Room play lives in `room.tsx`; both feed the same
+ * boards in `components/`.
  */
 
 const GAME_KEY = 'bb:localGame';

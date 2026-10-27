@@ -1,4 +1,4 @@
-// Types shared by the client, the pure game module and (in Phase 2) the Worker.
+// Types shared by the client, the pure game module and the Worker.
 // Nothing in here may import React or Cloudflare APIs.
 
 export type Mode = 'spotit' | 'bingo';
@@ -50,8 +50,8 @@ export interface Player {
 }
 
 /**
- * A claim on an item in Called It. `pending` is reserved for the Phase 2
- * "host approves" room setting; Phase 1 only ever produces `claimed`.
+ * A claim on an item in Called It. `pending` is a guest's claim waiting for
+ * the host under the "host approves" room setting; everything else is `claimed`.
  */
 export interface Claim {
   itemId: string;
