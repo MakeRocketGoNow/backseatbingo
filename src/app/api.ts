@@ -9,6 +9,17 @@ export class ApiError extends Error {
   }
 }
 
+export const OFFLINE_MESSAGE = 'No signal. Trips need a connection; playing on this phone works without one.';
+
+/** `fetch` rejects with a bare TypeError when there is no network; say so in car terms. */
+async function request(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch {
+    throw new ApiError(OFFLINE_MESSAGE, 0);
+  }
+}
+
 async function errorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const data = (await res.json()) as { error?: unknown };
@@ -20,7 +31,7 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
 }
 
 export async function createRoom(req: CreateRoomRequest): Promise<CreateRoomResponse> {
-  const res = await fetch('/api/rooms', {
+  const res = await request('/api/rooms', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(req),
@@ -31,7 +42,7 @@ export async function createRoom(req: CreateRoomRequest): Promise<CreateRoomResp
 
 /** Null when there is no such room. */
 export async function getRoomInfo(code: string): Promise<RoomInfoResponse | null> {
-  const res = await fetch(`/api/rooms/${encodeURIComponent(code)}`);
+  const res = await request(`/api/rooms/${encodeURIComponent(code)}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new ApiError(await errorMessage(res, 'Could not look up that trip.'), res.status);
   return (await res.json()) as RoomInfoResponse;
