@@ -16,8 +16,11 @@ import { getPlayerToken } from './identity';
  */
 
 export type ConnectionStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
-/** `not-found`: the room was gone when this device connected (closed while it was away, or expired). */
-export type CloseReason = 'host-closed' | 'left' | 'not-found' | null;
+/**
+ * `not-found`: the room was gone when this device connected (closed while it was away, or expired).
+ * `full`: this device is not in the room and the room has no space.
+ */
+export type CloseReason = 'host-closed' | 'left' | 'not-found' | 'full' | null;
 
 export interface RoomSnapshot {
   connection: ConnectionStatus;
@@ -229,7 +232,16 @@ export class RoomConnection {
           const seq = msg.seq;
           this.pending = this.pending.filter((p) => p.seq !== seq);
         }
-        if (msg.code === 'not-joined' || msg.code === 'name-taken' || msg.code === 'room-full') {
+        if (msg.code === 'room-full') {
+          // Picking another name will not help, so stop here instead of bouncing to the Join screen.
+          const ws = this.ws;
+          this.ws = null;
+          window.clearTimeout(this.heartbeat);
+          ws?.close();
+          this.publish({ connection: 'closed', closeReason: 'full' });
+          return;
+        }
+        if (msg.code === 'not-joined' || msg.code === 'name-taken') {
           this.publish({ needsName: true });
           if (msg.code !== 'not-joined') this.callbacks.onToast(msg.message);
           return;

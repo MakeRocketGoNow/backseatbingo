@@ -221,6 +221,20 @@ describe('RoomConnection while offline', () => {
   });
 });
 
+describe('RoomConnection when the room is full', () => {
+  it('stops instead of sending the user to pick another name', () => {
+    const onToast = vi.fn();
+    const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast });
+    conn.start();
+    last().open();
+    last().receive({ type: 'error', code: 'room-full', message: 'This trip is full.', seq: 0 });
+    expect(conn.getSnapshot()).toMatchObject({ connection: 'closed', closeReason: 'full', needsName: false });
+    expect(last().readyState).toBe(FakeSocket.CLOSED);
+    vi.runAllTimers();
+    expect(FakeSocket.all).toHaveLength(1);
+  });
+});
+
 describe('RoomConnection when the room is gone', () => {
   it('stops retrying when the server says the room does not exist', () => {
     const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast: vi.fn() });

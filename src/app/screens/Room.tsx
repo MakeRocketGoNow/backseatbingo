@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from '@tanstack/react-router';
+import { MAX_ROOM_PLAYERS } from '@shared/types';
 import { BingoBoard } from '@app/components/BingoBoard';
 import { CalledItBoard } from '@app/components/CalledItBoard';
 import { CloseTripButton } from '@app/components/CloseTripButton';
@@ -132,24 +133,30 @@ function RoomWinner() {
   );
 }
 
+function closedCopy(reason: NonNullable<CloseReason>, code: string, youAreHost: boolean) {
+  switch (reason) {
+    case 'left':
+      return { title: 'You left', headline: 'You left the trip', sub: 'Thanks for playing.' };
+    case 'not-found':
+      return { title: 'Trip over', headline: `Trip ${code} has ended`, sub: 'The code no longer works.' };
+    case 'full':
+      return { title: 'Trip full', headline: `Trip ${code} is full`, sub: `It already has ${MAX_ROOM_PLAYERS} players.` };
+    case 'host-closed':
+      return youAreHost
+        ? { title: 'Trip over', headline: 'Trip closed', sub: 'The code no longer works.' }
+        : { title: 'Trip over', headline: 'The host ended the trip', sub: 'Thanks for playing.' };
+  }
+}
+
 function Closed({ reason, youAreHost }: { reason: NonNullable<CloseReason>; youAreHost: boolean }) {
   const navigate = useNavigate();
   const { code } = useRoom();
-  const headline =
-    reason === 'left'
-      ? 'You left the trip'
-      : reason === 'not-found'
-        ? `Trip ${code} has ended`
-        : youAreHost
-          ? 'Trip closed'
-          : 'The host ended the trip';
+  const copy = closedCopy(reason, code, youAreHost);
   return (
-    <Page title={reason === 'left' ? 'You left' : 'Trip over'}>
+    <Page title={copy.title}>
       <div className="hero">
-        <h2 className="hero-title">{headline}</h2>
-        <p className="hero-sub">
-          {youAreHost || reason === 'not-found' ? 'The code no longer works.' : 'Thanks for playing.'}
-        </p>
+        <h2 className="hero-title">{copy.headline}</h2>
+        <p className="hero-sub">{copy.sub}</p>
       </div>
       <div className="btn-stack">
         <button className="btn btn-primary btn-big" onClick={() => void navigate({ to: '/', replace: true })}>
