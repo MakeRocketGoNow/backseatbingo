@@ -41,7 +41,7 @@ export function slugify(text: string): string {
  * duplicates are dropped; ids are made unique with a numeric suffix.
  */
 export function itemsFromLines(lines: string): PackItem[] {
-  const seen = new Map<string, number>();
+  const ids = new Set<string>();
   const texts = new Set<string>();
   const items: PackItem[] = [];
   for (const raw of lines.split(/\r?\n/)) {
@@ -51,9 +51,11 @@ export function itemsFromLines(lines: string): PackItem[] {
     if (texts.has(key)) continue;
     texts.add(key);
     const base = slugify(text) || 'item';
-    const n = seen.get(base) ?? 0;
-    seen.set(base, n + 1);
-    items.push({ id: n === 0 ? base : `${base}-${n + 1}`, text });
+    // Bump until free: "a b 2" slugs to a suffixed id itself, so counting per base is not enough.
+    let id = base;
+    for (let n = 2; ids.has(id); n++) id = `${base}-${n}`;
+    ids.add(id);
+    items.push({ id, text });
   }
   return items;
 }

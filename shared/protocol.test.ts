@@ -32,6 +32,7 @@ describe('isClientMessage', () => {
       { type: 'settings', settings: { ...settings, listLength: 'x' }, seq: 1 },
       { type: 'newRound', settings, pack: { ...pack, items: [] }, seq: 1 },
       { type: 'newRound', settings, pack: { ...pack, items: [{ id: 'a', text: 'A', emoji: {} }] }, seq: 1 },
+      { type: 'newRound', settings, pack: { ...pack, items: [{ id: 'a', text: 'A' }, { id: 'a', text: 'B' }] }, seq: 1 },
     ]) {
       expect(isClientMessage(m)).toBe(false);
     }

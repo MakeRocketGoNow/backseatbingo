@@ -50,6 +50,8 @@ export function isRoomPack(v: unknown): v is Pack {
         optionalString(i['emoji'], 16) &&
         optionalString(i['region'], 60) &&
         (i['rarity'] === undefined || i['rarity'] === 'common' || i['rarity'] === 'uncommon' || i['rarity'] === 'rare'),
-    )
+    ) &&
+    // Claims are keyed by item id, so two items sharing one would be claimed together.
+    new Set(v['items'].map((i: { id: string }) => i.id)).size === v['items'].length
   );
 }

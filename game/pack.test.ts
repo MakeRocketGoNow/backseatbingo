@@ -39,5 +39,7 @@ describe('packs', () => {
       { id: 'red-barn-2', text: 'Red barn!' },
       { id: 'green-tractor', text: 'Green tractor' },
     ]);
+    const tricky = itemsFromLines('a b\na b!\na b 2');
+    expect(new Set(tricky.map((i) => i.id)).size).toBe(3);
   });
 });
