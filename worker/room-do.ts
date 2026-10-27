@@ -127,13 +127,7 @@ export class RoomDO extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server);
     const attachment: Attachment = { token };
     server.serializeAttachment(attachment);
-
-    const playerId = stored.tokens[token];
-    if (playerId && stored.room.players.some((p) => p.id === playerId)) {
-      const next: Stored = { ...stored, room: setConnected(stored.room, playerId, true, Date.now()) };
-      await this.save(next);
-      this.broadcast(next);
-    }
+    // The client's `join` marks it connected and sends everyone one snapshot.
     return new Response(null, { status: 101, webSocket: client });
   }
 

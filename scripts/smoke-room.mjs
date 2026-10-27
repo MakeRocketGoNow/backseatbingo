@@ -104,7 +104,8 @@ async function main() {
   console.log('host connects');
   const host = connect(code, hostToken);
   await host.open();
-  let st = await host.until((m) => m.type === 'state', 'host state on connect');
+  host.send({ type: 'join', name: 'Dad' });
+  let st = await host.until((m) => m.type === 'state', 'host state on join');
   assert(st.you === st.state.hostId, 'host is recognised by token');
   assert(st.state.players[0].connected === true, 'host shows connected');
 
@@ -144,6 +145,7 @@ async function main() {
   st = await host.until((m) => m.type === 'state' && m.state.players[1].connected === false, 'host sees guest offline');
   const guest2 = connect(code, guestToken);
   await guest2.open();
+  guest2.send({ type: 'join', name: 'Kid' });
   st = await guest2.until((m) => m.type === 'state', 'state restored on reconnect');
   assert(st.state.game.claims[first] && st.state.players[1].connected === true, 'claims and connection restored');
   guest2.ws.send('ping');
