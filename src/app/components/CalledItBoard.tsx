@@ -71,9 +71,9 @@ export function CalledItBoard(props: CalledItBoardProps) {
     setSheet({ kind: 'who', item });
   }
 
-  function doUndo(item: PackItem, wasPending: boolean) {
+  function doUndo(item: PackItem) {
     onUnclaim(item.id);
-    toast.show(wasPending ? `"${item.text}" is back up for grabs` : `"${item.text}" is back up for grabs`);
+    toast.show(`"${item.text}" is back up for grabs`);
     close();
   }
 
@@ -166,7 +166,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
                 OK, {claimedName} got it
               </button>
             )}
-            <button className="btn btn-danger" onClick={() => doUndo(sheet.item, claimedPending)}>
+            <button className="btn btn-danger" onClick={() => doUndo(sheet.item)}>
               {claimedPending ? 'No, they didn’t' : 'Undo'}
             </button>
             {game.players.length > 1 && (
