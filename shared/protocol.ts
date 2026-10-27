@@ -1,4 +1,6 @@
 import type { Pack, RoomSettings, RoomState, RoomStatus } from './types';
+import { BINGO_CELLS } from './types';
+import { isRecord, isRoomPack, isRoomSettings } from './validate';
 
 // HTTP
 
@@ -67,8 +69,31 @@ export type ServerMessage =
   | { type: 'error'; code: RoomErrorCode; message: string; seq?: number }
   | { type: 'toast'; message: string };
 
+/** Checks every field a client message carries; the room trusts nothing else about it. */
 export function isClientMessage(v: unknown): v is ClientMessage {
-  if (typeof v !== 'object' || v === null) return false;
-  const m = v as Record<string, unknown>;
-  return typeof m['type'] === 'string' && typeof m['seq'] === 'number';
+  if (!isRecord(v) || !Number.isInteger(v['seq'])) return false;
+  switch (v['type'] as ClientAction['type']) {
+    case 'join':
+      return typeof v['name'] === 'string';
+    case 'start':
+    case 'bingo':
+    case 'end':
+    case 'leave':
+    case 'close':
+      return true;
+    case 'claim':
+    case 'unclaim':
+    case 'approve':
+      return typeof v['itemId'] === 'string';
+    case 'reassign':
+      return typeof v['itemId'] === 'string' && typeof v['playerId'] === 'string';
+    case 'mark':
+    case 'unmark':
+      return Number.isInteger(v['cell']) && (v['cell'] as number) >= 0 && (v['cell'] as number) < BINGO_CELLS;
+    case 'settings':
+    case 'newRound':
+      return isRoomSettings(v['settings']) && (v['pack'] === undefined || isRoomPack(v['pack']));
+    default:
+      return false;
+  }
 }

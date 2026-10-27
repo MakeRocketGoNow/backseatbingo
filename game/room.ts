@@ -221,5 +221,8 @@ export function applyAction(
       }
       return ok(finishIfGameEnded({ ...room, game: r.state, updatedAt: now }, now));
     }
+
+    default:
+      return fail(room, 'bad-message', 'Could not read that message.');
   }
 }

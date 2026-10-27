@@ -1,6 +1,6 @@
 import type { CreateRoomRequest, CreateRoomResponse } from '../shared/protocol';
 import { CLOSE_NOT_FOUND } from '../shared/protocol';
-import type { Pack, RoomSettings } from '../shared/types';
+import { isRecord, isRoomPack, isRoomSettings } from '../shared/validate';
 import { generateRoomCode, isValidRoomCode } from '../game/codes';
 import { closedSocket } from './closed-socket';
 import type { Env } from './env';
@@ -9,7 +9,6 @@ import { RoomDO } from './room-do';
 export { RoomDO };
 
 const MAX_BODY_BYTES = 128 * 1024;
-const MAX_PACK_ITEMS = 500;
 const MAX_NAME = 20;
 const CODE_ATTEMPTS = 8;
 
@@ -18,46 +17,6 @@ function json(body: unknown, status = 200, headers: HeadersInit = {}): Response 
     status,
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers },
   });
-}
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
-}
-
-function isSettings(v: unknown): v is RoomSettings {
-  return (
-    isRecord(v) &&
-    (v['mode'] === 'spotit' || v['mode'] === 'bingo') &&
-    (v['listLength'] === 'quick' || v['listLength'] === 'normal' || v['listLength'] === 'long') &&
-    (v['pattern'] === 'line' || v['pattern'] === 'corners' || v['pattern'] === 'x' || v['pattern'] === 'blackout') &&
-    (v['approvals'] === 'auto' || v['approvals'] === 'host')
-  );
-}
-
-function isPack(v: unknown): v is Pack {
-  return (
-    isRecord(v) &&
-    typeof v['id'] === 'string' &&
-    typeof v['name'] === 'string' &&
-    v['name'].length > 0 &&
-    v['name'].length <= 60 &&
-    typeof v['description'] === 'string' &&
-    typeof v['free'] === 'boolean' &&
-    typeof v['minAge'] === 'number' &&
-    Array.isArray(v['items']) &&
-    v['items'].length > 0 &&
-    v['items'].length <= MAX_PACK_ITEMS &&
-    v['items'].every(
-      (i: unknown) =>
-        isRecord(i) &&
-        typeof i['id'] === 'string' &&
-        i['id'].length > 0 &&
-        i['id'].length <= 80 &&
-        typeof i['text'] === 'string' &&
-        i['text'].length > 0 &&
-        i['text'].length <= 200,
-    )
-  );
 }
 
 function isCreateRequest(v: unknown): v is CreateRoomRequest {
@@ -69,8 +28,8 @@ function isCreateRequest(v: unknown): v is CreateRoomRequest {
     typeof v['name'] === 'string' &&
     v['name'].trim().length > 0 &&
     v['name'].length <= MAX_NAME &&
-    isSettings(v['settings']) &&
-    isPack(v['pack'])
+    isRoomSettings(v['settings']) &&
+    isRoomPack(v['pack'])
   );
 }
 

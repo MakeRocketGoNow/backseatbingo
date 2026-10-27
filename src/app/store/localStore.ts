@@ -50,6 +50,4 @@ export function createLocalStore<T>(key: string, fallback: T, validate: (v: unkn
   return { read, write, use, subscribe };
 }
 
-export function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
-}
+export { isRecord } from '@shared/validate';

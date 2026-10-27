@@ -201,4 +201,9 @@ describe('rounds and leaving', () => {
   it('unknown players are rejected', () => {
     expect(applyAction(room(), 'ghost', { type: 'start' }, 3, rng()).error?.code).toBe('not-joined');
   });
+
+  it('an unknown action is rejected rather than crashing the room', () => {
+    const action = { type: 'explode' } as unknown as Parameters<typeof applyAction>[2];
+    expect(applyAction(room(), 'h', action, 3, rng()).error?.code).toBe('bad-message');
+  });
 });
