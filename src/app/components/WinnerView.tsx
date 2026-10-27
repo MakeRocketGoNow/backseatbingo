@@ -40,7 +40,10 @@ export function WinnerView({ game, children, headerExtra }: WinnerViewProps) {
           return (
             <li className={`standing ${first ? 'standing-first' : ''}`} key={s.player.id}>
               <span className="standing-rank">{first ? '🏆' : s.rank}</span>
-              <span>{s.player.name}</span>
+              <span>
+                {s.player.name}
+                {s.player.left && ' (left)'}
+              </span>
               <span className="standing-score">{isBingo ? (bingoed ? 'Bingo!' : `${s.score} marked`) : s.score}</span>
             </li>
           );

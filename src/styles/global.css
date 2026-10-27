@@ -369,6 +369,12 @@ a {
   font-weight: 900;
 }
 
+/* Left the trip mid-round: the score stands, the chip steps back. */
+.score-left:not(.score-leader) {
+  background: transparent;
+  border: 2px dashed var(--border);
+}
+
 /* Called It chips */
 
 .chip-grid {

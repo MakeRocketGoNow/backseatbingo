@@ -40,6 +40,8 @@ export function CalledItBoard(props: CalledItBoardProps) {
 
   const playerById = (id: string): Player | undefined => game.players.find((p) => p.id === id);
   const nameOf = (id: string): string => playerById(id)?.name ?? 'Someone';
+  // People who left the trip keep their score but cannot be handed a call.
+  const active = game.players.filter((p) => !p.left);
   const remaining = game.items.filter((i) => game.claims[i.id]?.status !== 'claimed').length;
 
   function close() {
@@ -137,7 +139,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
 
       <Sheet open={sheet.kind === 'who'} title={sheet.kind === 'who' ? `Who called "${sheet.item.text}"?` : undefined} onClose={close}>
         {sheet.kind === 'who' &&
-          game.players.map((p) => (
+          active.map((p) => (
             <button key={p.id} className="btn btn-primary btn-big" onClick={() => doClaim(sheet.item, p.id)}>
               {p.name}
             </button>
@@ -169,7 +171,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
             <button className="btn btn-danger" onClick={() => doUndo(sheet.item)}>
               {claimedPending ? 'No, they didn’t' : 'Undo'}
             </button>
-            {game.players.length > 1 && (
+            {active.some((p) => p.id !== claimedSheet?.playerId) && (
               <button className="btn" onClick={() => setSheet({ ...sheet, reassigning: true })}>
                 Give it to someone else
               </button>
@@ -178,7 +180,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
         )}
         {sheet.kind === 'claimed' &&
           sheet.reassigning &&
-          game.players
+          active
             .filter((p) => p.id !== claimedSheet?.playerId)
             .map((p) => (
               <button key={p.id} className="btn btn-primary" onClick={() => doReassign(sheet.item, p)}>
