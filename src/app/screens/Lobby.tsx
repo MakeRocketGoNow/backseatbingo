@@ -110,7 +110,6 @@ export function Lobby() {
       {/* Mounted only while open, so every opening starts from the room's current settings. */}
       {isHost && editing && (
         <SettingsSheet
-          open
           onClose={() => setEditing(false)}
           roomPack={room.pack}
           initial={{ packId: room.pack.id, ...s }}

@@ -107,7 +107,6 @@ function RoomWinner() {
           {/* Mounted only while open, so it starts from the room's current settings. */}
           {nextRound && (
             <SettingsSheet
-              open
               onClose={() => setNextRound(false)}
               roomPack={room.pack}
               // Called It is the default on "play again".

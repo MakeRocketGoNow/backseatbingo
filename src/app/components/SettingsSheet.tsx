@@ -5,7 +5,6 @@ import { SettingsForm, type GameSettings } from './SettingsForm';
 import { Sheet } from './Sheet';
 
 interface SettingsSheetProps {
-  open: boolean;
   onClose: () => void;
   roomPack: Pack;
   initial: GameSettings;
@@ -13,15 +12,18 @@ interface SettingsSheetProps {
   onSubmit: (settings: Omit<GameSettings, 'packId'>, pack: Pack | undefined) => void;
 }
 
-/** Host changes settings (lobby) or picks the next round (winner). The host's local packs are offered alongside the room's. */
-export function SettingsSheet({ open, onClose, roomPack, initial, submitLabel, onSubmit }: SettingsSheetProps) {
+/**
+ * Host changes settings (lobby) or picks the next round (winner). The host's local packs are offered alongside the room's.
+ * Render it only while it should show: it reads `initial` once, so each mount starts from the room's current settings.
+ */
+export function SettingsSheet({ onClose, roomPack, initial, submitLabel, onSubmit }: SettingsSheetProps) {
   const { packs, isLoading } = usePacks();
   const [value, setValue] = useState<GameSettings>(initial);
   const options = useMemo(() => (packs.some((p) => p.id === roomPack.id) ? packs : [roomPack, ...packs]), [packs, roomPack]);
   const chosen = options.find((p) => p.id === value.packId);
 
   return (
-    <Sheet open={open} title="Game settings" onClose={onClose}>
+    <Sheet open title="Game settings" onClose={onClose}>
       <SettingsForm packs={options} isLoading={isLoading} value={value} onChange={setValue} showApprovals hideListLink />
       <button
         className="btn btn-primary btn-big"
