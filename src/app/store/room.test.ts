@@ -156,6 +156,21 @@ describe('RoomConnection', () => {
   });
 });
 
+describe('RoomConnection while offline', () => {
+  it('tells the user a host action cannot be sent instead of dropping it', () => {
+    const onToast = vi.fn();
+    const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast });
+    conn.start();
+    last().open();
+    last().drop();
+    conn.send({ type: 'end' });
+    expect(onToast).toHaveBeenCalledWith('Not connected. Try again when you have signal.');
+    vi.runOnlyPendingTimers();
+    last().open();
+    expect(last().sent.map((m) => m.type)).toEqual(['join']);
+  });
+});
+
 describe('RoomConnection when the room is gone', () => {
   it('stops retrying when the server says the room does not exist', () => {
     const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast: vi.fn() });

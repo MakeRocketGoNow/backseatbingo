@@ -86,7 +86,13 @@ export class RoomConnection {
 
   send(action: ClientAction): void {
     const msg: ClientMessage = { ...action, seq: ++this.seq };
-    if (REPLAYABLE.has(action.type)) this.pending.push(msg);
+    if (REPLAYABLE.has(action.type)) {
+      this.pending.push(msg);
+    } else if (this.ws?.readyState !== WebSocket.OPEN) {
+      // Round and membership changes are not queued, so say so rather than drop them silently.
+      this.callbacks.onToast('Not connected. Try again when you have signal.');
+      return;
+    }
     this.raw(msg);
     this.publish({});
   }
