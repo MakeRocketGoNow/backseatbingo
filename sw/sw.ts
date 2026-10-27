@@ -48,7 +48,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   // Rooms are live; never serve them from cache.
   if (url.pathname.startsWith('/api/')) return;
-  event.respondWith(req.mode === 'navigate' ? shell(req) : cacheFirst(req));
+  event.respondWith(req.mode === 'navigate' ? shell(req) : cacheFirst(event));
 });
 
 /** Every route is the one page; serve the cached shell so deep links open offline too. */
@@ -58,14 +58,16 @@ async function shell(req: Request): Promise<Response> {
 }
 
 /** Hashed assets never change under one name, so the cache is the source of truth. */
-async function cacheFirst(req: Request): Promise<Response> {
+async function cacheFirst(event: FetchEvent): Promise<Response> {
+  const req = event.request;
   const cached = await caches.match(req);
   if (cached) return cached;
   const res = await fetch(req);
   const path = new URL(req.url).pathname;
   if (res.ok && res.type === 'basic' && RUNTIME.some((prefix) => path.startsWith(prefix))) {
-    const cache = await caches.open(__CACHE_NAME__);
-    void cache.put(req, res.clone());
+    // Held open with waitUntil, or the worker may stop before the write lands.
+    const copy = res.clone();
+    event.waitUntil(caches.open(__CACHE_NAME__).then((cache) => cache.put(req, copy)));
   }
   return res;
 }
