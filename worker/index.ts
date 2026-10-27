@@ -45,9 +45,12 @@ async function createRoom(request: Request, env: Env): Promise<Response> {
   }
   const length = Number(request.headers.get('content-length') ?? '0');
   if (length > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
+  // A chunked body has no content-length, so measure what actually arrived too.
+  const raw = await request.arrayBuffer();
+  if (raw.byteLength > MAX_BODY_BYTES) return json({ error: 'Request too large.' }, 413);
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(new TextDecoder().decode(raw));
   } catch {
     return json({ error: 'Expected JSON.' }, 400);
   }
