@@ -3,12 +3,13 @@ import type { RoomErrorCode } from '../shared/protocol';
 import type { GameState, Pack, Player, RoomPlayer, RoomSettings, RoomState } from '../shared/types';
 import { MAX_NAME_LENGTH, MAX_ROOM_PLAYERS } from '../shared/types';
 import { addBingoPlayer, callBingo, createBingoGame, endBingoGame, setMark, type BingoError } from './bingo';
-import { canPlayBingo, drawItems } from './pack';
+import { canPlayBingo, canPlaySpotIt, drawItems } from './pack';
 import type { Rng } from './rng';
 import {
   addSpotItPlayer,
   approveClaim,
   claim,
+  createSpotItGame,
   endSpotItGame,
   reassign,
   unclaim,
@@ -93,16 +94,11 @@ export function setConnected(room: RoomState, playerId: string, connected: boole
 function newGame(room: RoomState, rng: Rng): GameState | RoomError {
   const players: Player[] = room.players.map((p) => ({ id: p.id, name: p.name }));
   if (room.settings.mode === 'spotit') {
-    if (room.pack.items.length === 0) return 'not-enough-items';
-    return { ...createSpotIt(players, room, rng) };
+    if (!canPlaySpotIt(room.pack)) return 'not-enough-items';
+    return createSpotItGame(players, drawItems(room.pack.items, room.settings.listLength, rng));
   }
   if (!canPlayBingo(room.pack)) return 'not-enough-items';
   return createBingoGame(players, room.pack.items, room.settings.pattern, rng);
-}
-
-function createSpotIt(players: Player[], room: RoomState, rng: Rng): GameState {
-  const items = drawItems(room.pack.items, room.settings.listLength, rng);
-  return { mode: 'spotit', status: 'playing', players, items, claims: {} };
 }
 
 function startRound(room: RoomState, now: number, rng: Rng): RoomResult {
