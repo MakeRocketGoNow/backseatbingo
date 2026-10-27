@@ -68,7 +68,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
     }
     if (!playing) return;
     if (you) return doClaim(item, you);
-    const only = game.players.length === 1 ? game.players[0] : undefined;
+    const only = active.length === 1 ? active[0] : undefined;
     if (only) return doClaim(item, only.id);
     setSheet({ kind: 'who', item });
   }
