@@ -1,0 +1,313 @@
+import { createContext, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
+import type { ClientAction, ClientMessage, ServerMessage } from '@shared/protocol';
+import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED } from '@shared/protocol';
+import type { RoomState } from '@shared/types';
+import { applyAction } from '@game/index';
+import { roomSocketUrl } from '@app/api';
+import { useToast } from '@app/components/Toast';
+import { getPlayerToken } from './identity';
+
+/**
+ * The room store: one WebSocket to the room's Durable Object. The server
+ * sends a full snapshot after every change. Taps are queued with a sequence
+ * number, replayed locally through the same pure rules the server runs (so
+ * the UI responds instantly, even offline), and dropped once the server
+ * acknowledges or rejects them.
+ */
+
+export type ConnectionStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
+/**
+ * `not-found`: the room was gone when this device connected (closed while it was away, or expired).
+ * `full`: this device is not in the room and the room has no space.
+ */
+export type CloseReason = 'host-closed' | 'left' | 'not-found' | 'full' | null;
+
+export interface RoomSnapshot {
+  connection: ConnectionStatus;
+  /** Server state with unacknowledged local actions replayed on top. */
+  room: RoomState | null;
+  you: string | null;
+  /** The server does not know this device; go pick a name. */
+  needsName: boolean;
+  closeReason: CloseReason;
+}
+
+/** Actions safe to replay locally. Round and membership changes wait for the server. */
+const REPLAYABLE = new Set<ClientAction['type']>(['claim', 'unclaim', 'reassign', 'approve', 'mark', 'unmark', 'bingo']);
+const MAX_BACKOFF_MS = 15_000;
+// A socket can go half-open after a cell handover: no error, no close, just
+// silence. Ping after a quiet spell and give up on the socket if nothing answers.
+const PING_AFTER_QUIET_MS = 20_000;
+const PONG_TIMEOUT_MS = 5_000;
+const CONNECT_TIMEOUT_MS = 10_000;
+
+interface Callbacks {
+  onToast: (message: string) => void;
+}
+
+export class RoomConnection {
+  private ws: WebSocket | null = null;
+  private seq = 0;
+  /** Lets the room tell this connection's resent taps from new ones; `seq` restarts with each connection object. */
+  private readonly session = crypto.randomUUID();
+  private pending: ClientMessage[] = [];
+  private attempt = 0;
+  private timer: number | undefined;
+  /** Pings after a quiet spell, or abandons a socket that stopped answering. */
+  private heartbeat: number | undefined;
+  private stopped = false;
+  private server: RoomState | null = null;
+  private you: string | null = null;
+  private listeners = new Set<() => void>();
+  private snapshot: RoomSnapshot = { connection: 'connecting', room: null, you: null, needsName: false, closeReason: null };
+
+  constructor(
+    private readonly code: string,
+    private readonly token: string,
+    private name: string,
+    private readonly callbacks: Callbacks,
+  ) {}
+
+  setName(name: string): void {
+    this.name = name;
+  }
+
+  start(): void {
+    this.stopped = false;
+    window.addEventListener('online', this.wake);
+    document.addEventListener('visibilitychange', this.wake);
+    this.connect();
+  }
+
+  stop(): void {
+    this.stopped = true;
+    window.clearTimeout(this.timer);
+    window.clearTimeout(this.heartbeat);
+    window.removeEventListener('online', this.wake);
+    document.removeEventListener('visibilitychange', this.wake);
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
+  }
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  getSnapshot = (): RoomSnapshot => this.snapshot;
+
+  send(action: ClientAction): void {
+    const msg: ClientMessage = { ...action, seq: ++this.seq };
+    if (REPLAYABLE.has(action.type)) {
+      if (this.server) msg.round = this.server.round;
+      this.pending.push(msg);
+    } else if (this.ws?.readyState !== WebSocket.OPEN) {
+      // Round and membership changes are not queued, so say so rather than drop them silently.
+      this.callbacks.onToast('Not connected. Try again when you have signal.');
+      return;
+    }
+    this.raw(msg);
+    this.publish({});
+  }
+
+  private wake = (): void => {
+    if (this.stopped || document.visibilityState === 'hidden') return;
+    if (this.ws) {
+      // Coming back to the tab: check now that the socket still works.
+      if (this.ws.readyState === WebSocket.OPEN) this.ping(this.ws);
+      return;
+    }
+    window.clearTimeout(this.timer);
+    this.attempt = 0;
+    this.connect();
+  };
+
+  private connect(): void {
+    if (this.stopped || this.snapshot.closeReason) return;
+    this.publish({ connection: this.attempt === 0 && !this.server ? 'connecting' : 'reconnecting' });
+    const ws = new WebSocket(roomSocketUrl(this.code, this.token));
+    this.ws = ws;
+    this.watch(ws, CONNECT_TIMEOUT_MS);
+    ws.onopen = () => {
+      if (this.ws !== ws) return;
+      this.attempt = 0;
+      this.quietPing(ws);
+      this.publish({ connection: 'open' });
+      // A known token makes this a reconnect; the server ignores the name then.
+      // The join takes seq 0, below every queued tap, so its ack cannot drop
+      // taps the server has not seen yet.
+      this.raw({ type: 'join', name: this.name, session: this.session, seq: 0 });
+      for (const m of this.pending) this.raw(m);
+    };
+    ws.onmessage = (e: MessageEvent<string>) => {
+      if (this.ws !== ws) return;
+      this.quietPing(ws);
+      if (e.data === 'pong') return;
+      let msg: ServerMessage;
+      try {
+        msg = JSON.parse(e.data) as ServerMessage;
+      } catch {
+        return;
+      }
+      this.handle(msg);
+    };
+    ws.onclose = (e: CloseEvent) => {
+      if (this.ws !== ws) return;
+      this.ws = null;
+      window.clearTimeout(this.heartbeat);
+      if (this.stopped) return;
+      if (e.code === CLOSE_ROOM_CLOSED) return this.publish({ connection: 'closed', closeReason: 'host-closed' });
+      if (e.code === CLOSE_LEFT) return this.publish({ connection: 'closed', closeReason: 'left' });
+      if (e.code === CLOSE_NOT_FOUND) return this.publish({ connection: 'closed', closeReason: 'not-found' });
+      this.scheduleReconnect();
+    };
+    ws.onerror = () => {
+      // onclose follows and handles the retry
+    };
+  }
+
+  /** Ping once the socket has been quiet for a while. Any message resets this. */
+  private quietPing(ws: WebSocket): void {
+    window.clearTimeout(this.heartbeat);
+    this.heartbeat = window.setTimeout(() => this.ping(ws), PING_AFTER_QUIET_MS);
+  }
+
+  private ping(ws: WebSocket): void {
+    try {
+      ws.send('ping');
+    } catch {
+      // onclose follows
+    }
+    this.watch(ws, PONG_TIMEOUT_MS);
+  }
+
+  /** Abandon `ws` and reconnect unless something arrives (or it opens) within `ms`. */
+  private watch(ws: WebSocket, ms: number): void {
+    window.clearTimeout(this.heartbeat);
+    this.heartbeat = window.setTimeout(() => {
+      if (this.ws !== ws) return;
+      // A half-open socket may take minutes to report its close; stop waiting for it.
+      this.ws = null;
+      ws.close();
+      this.scheduleReconnect();
+    }, ms);
+  }
+
+  private scheduleReconnect(): void {
+    const base = Math.min(MAX_BACKOFF_MS, 1000 * 2 ** this.attempt);
+    const delay = base / 2 + Math.random() * (base / 2);
+    this.attempt += 1;
+    this.publish({ connection: 'reconnecting' });
+    this.timer = window.setTimeout(() => this.connect(), delay);
+  }
+
+  private raw(msg: ClientMessage): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify(msg));
+      } catch {
+        // socket died between the check and the send; onclose will retry
+      }
+    }
+  }
+
+  private handle(msg: ServerMessage): void {
+    switch (msg.type) {
+      case 'state': {
+        this.server = msg.state;
+        this.you = msg.you;
+        const ack = msg.ack ?? 0;
+        // Taps from an earlier round would be rejected; stop replaying them.
+        this.pending = this.pending.filter((p) => p.seq > ack && (p.round === undefined || p.round === msg.state.round));
+        if (msg.state.status === 'closed') {
+          this.publish({ connection: 'closed', closeReason: 'host-closed', needsName: false });
+        } else {
+          this.publish({ needsName: false });
+        }
+        return;
+      }
+      case 'error': {
+        if (msg.seq !== undefined) {
+          const seq = msg.seq;
+          this.pending = this.pending.filter((p) => p.seq !== seq);
+        }
+        if (msg.code === 'room-full') {
+          // Picking another name will not help, so stop here instead of bouncing to the Join screen.
+          const ws = this.ws;
+          this.ws = null;
+          window.clearTimeout(this.heartbeat);
+          ws?.close();
+          this.publish({ connection: 'closed', closeReason: 'full' });
+          return;
+        }
+        if (msg.code === 'not-joined' || msg.code === 'name-taken') {
+          this.publish({ needsName: true });
+          if (msg.code !== 'not-joined') this.callbacks.onToast(msg.message);
+          return;
+        }
+        if (msg.code === 'room-closed') {
+          this.publish({ connection: 'closed', closeReason: 'host-closed' });
+          return;
+        }
+        this.callbacks.onToast(msg.message);
+        this.publish({});
+        return;
+      }
+      case 'toast':
+        this.callbacks.onToast(msg.message);
+        return;
+    }
+  }
+
+  private view(): RoomState | null {
+    const base = this.server;
+    const you = this.you;
+    if (!base || !you) return base;
+    const now = Date.now();
+    return this.pending.reduce((room, m) => applyAction(room, you, m, now, Math.random).room, base);
+  }
+
+  private publish(patch: Partial<RoomSnapshot>): void {
+    this.snapshot = { ...this.snapshot, ...patch, room: this.view(), you: this.you };
+    this.listeners.forEach((l) => l());
+  }
+}
+
+interface RoomApi extends RoomSnapshot {
+  code: string;
+  isHost: boolean;
+  send: (action: ClientAction) => void;
+}
+
+const RoomContext = createContext<RoomApi | null>(null);
+
+export function RoomProvider({ code, name, children }: { code: string; name: string; children: ReactNode }) {
+  const toast = useToast();
+  const toastRef = useRef(toast.show);
+  toastRef.current = toast.show;
+
+  const conn = useMemo(
+    () => new RoomConnection(code, getPlayerToken(), name, { onToast: (m) => toastRef.current(m) }),
+    // The connection lives as long as the code does; a name change just updates it.
+    [code],
+  );
+  useEffect(() => conn.setName(name), [conn, name]);
+  useEffect(() => {
+    conn.start();
+    return () => conn.stop();
+  }, [conn]);
+
+  const snap = useSyncExternalStore(conn.subscribe, conn.getSnapshot, conn.getSnapshot);
+  const api = useMemo<RoomApi>(
+    () => ({ ...snap, code, isHost: !!snap.room && snap.you === snap.room.hostId, send: (a) => conn.send(a) }),
+    [snap, code, conn],
+  );
+  return <RoomContext.Provider value={api}>{children}</RoomContext.Provider>;
+}
+
+export function useRoom(): RoomApi {
+  const ctx = useContext(RoomContext);
+  if (!ctx) throw new Error('useRoom must be used inside RoomProvider');
+  return ctx;
+}

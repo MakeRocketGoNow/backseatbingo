@@ -19,11 +19,15 @@ export function canPlaySpotIt(pack: Pick<Pack, 'items'>): boolean {
   return pack.items.length >= 1;
 }
 
+/** How many items a Called It game of this length draws from a pack of `total`. */
+export function listItemCount(total: number, length: ListLength): number {
+  const n = LIST_LENGTH_COUNT[length];
+  return n === 'all' ? total : Math.min(n, total);
+}
+
 /** Draw the items for a Called It game. "long" uses every item in the pack. */
 export function drawItems(items: readonly PackItem[], length: ListLength, rng: Rng): PackItem[] {
-  const count = LIST_LENGTH_COUNT[length];
-  if (count === 'all') return sample(items, items.length, rng);
-  return sample(items, count, rng);
+  return sample(items, listItemCount(items.length, length), rng);
 }
 
 export function slugify(text: string): string {
@@ -41,7 +45,7 @@ export function slugify(text: string): string {
  * duplicates are dropped; ids are made unique with a numeric suffix.
  */
 export function itemsFromLines(lines: string): PackItem[] {
-  const seen = new Map<string, number>();
+  const ids = new Set<string>();
   const texts = new Set<string>();
   const items: PackItem[] = [];
   for (const raw of lines.split(/\r?\n/)) {
@@ -51,9 +55,11 @@ export function itemsFromLines(lines: string): PackItem[] {
     if (texts.has(key)) continue;
     texts.add(key);
     const base = slugify(text) || 'item';
-    const n = seen.get(base) ?? 0;
-    seen.set(base, n + 1);
-    items.push({ id: n === 0 ? base : `${base}-${n + 1}`, text });
+    // Bump until free: "a b 2" slugs to a suffixed id itself, so counting per base is not enough.
+    let id = base;
+    for (let n = 2; ids.has(id); n++) id = `${base}-${n}`;
+    ids.add(id);
+    items.push({ id, text });
   }
   return items;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type { Pack } from '@shared/types';
+import { MAX_ITEM_LENGTH, MAX_PACK_ITEMS } from '@shared/types';
 import { BINGO_MIN_ITEMS, itemsFromLines } from '@game/index';
 import { Page } from '@app/components/Page';
 import { Sheet } from '@app/components/Sheet';
@@ -82,7 +83,10 @@ export function EditCustomList({ packId }: { packId?: string }) {
   }, [loaded, isLoading, existing]);
 
   const items = itemsFromLines(lines);
-  const canSave = name.trim().length > 0 && items.length > 0;
+  // Same caps as a room, so every saved list can host a trip.
+  const extra = items.length - MAX_PACK_ITEMS;
+  const tooLong = items.filter((i) => i.text.length > MAX_ITEM_LENGTH).length;
+  const canSave = name.trim().length > 0 && items.length > 0 && extra <= 0 && tooLong === 0;
 
   function onSave() {
     if (!canSave) return;
@@ -135,11 +139,19 @@ export function EditCustomList({ packId }: { packId?: string }) {
         onChange={(e) => setLines(e.target.value)}
       />
       <p className="muted small">
-        {items.length} item{items.length === 1 ? '' : 's'}.{' '}
+        {items.length} of {MAX_PACK_ITEMS} items.{' '}
         {items.length >= BINGO_MIN_ITEMS
           ? 'Works for Called It and Bingo.'
           : `Add ${BINGO_MIN_ITEMS - items.length} more for Bingo.`}
       </p>
+      {(extra > 0 || tooLong > 0) && (
+        // Polite, not an alert: it changes with every line typed and should not interrupt.
+        <div className="notice" role="status">
+          {extra > 0 && `Lists can have up to ${MAX_PACK_ITEMS} items. Remove ${extra}. `}
+          {tooLong > 0 &&
+            `${tooLong === 1 ? 'One item is' : `${tooLong} items are`} longer than ${MAX_ITEM_LENGTH} characters. Shorten ${tooLong === 1 ? 'it' : 'them'}.`}
+        </div>
+      )}
       <button className="btn btn-primary btn-big" disabled={!canSave || save.isPending} onClick={onSave}>
         Save
       </button>

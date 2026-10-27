@@ -45,6 +45,21 @@ export function createBingoGame(
   return { mode: 'bingo', status: 'playing', players, pattern, cards, winners: [] };
 }
 
+/** Add a late joiner with a fresh card. Idempotent for players already in the game. */
+export function addBingoPlayer(
+  state: BingoState,
+  player: Player,
+  items: readonly PackItem[],
+  rng: Rng,
+): BingoState {
+  if (state.cards[player.id]) return state;
+  return {
+    ...state,
+    players: [...state.players, player],
+    cards: { ...state.cards, [player.id]: generateCard(player.id, items, rng) },
+  };
+}
+
 const idx = (row: number, col: number): number => row * BINGO_SIZE + col;
 
 function allMarked(marks: readonly boolean[], cells: readonly number[]): boolean {
@@ -96,6 +111,15 @@ export function toggleMark(state: BingoState, playerId: string, cell: number): B
   return { ok: true, state: { ...state, cards: { ...state.cards, [playerId]: { ...card, marks } } } };
 }
 
+/** Explicit mark or unmark, used by rooms so a replayed message is idempotent. */
+export function setMark(state: BingoState, playerId: string, cell: number, marked: boolean): BingoResult {
+  const card = state.cards[playerId];
+  if (card && card.marks[cell] === marked && cell !== BINGO_FREE_INDEX && state.status === 'playing') {
+    return { ok: true, state };
+  }
+  return toggleMark(state, playerId, cell);
+}
+
 /** Player calls bingo. Verified against the stored card and marks. */
 export function callBingo(state: BingoState, playerId: string, at: number): BingoResult {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
@@ -105,8 +129,12 @@ export function callBingo(state: BingoState, playerId: string, at: number): Bing
   if (!hasPattern(card.marks, state.pattern)) return { ok: false, error: 'pattern-not-met' };
   const winners = [...state.winners, { playerId, at }];
   const next: BingoState = { ...state, winners };
-  const everyoneWon = state.players.every((p) => winners.some((w) => w.playerId === p.id));
-  return { ok: true, state: everyoneWon ? endBingoGame(next, at) : next };
+  return { ok: true, state: everyoneHasWon(next) ? endBingoGame(next, at) : next };
+}
+
+/** True once every player still in the game has bingo. Players who left do not hold the round open. */
+export function everyoneHasWon(state: BingoState): boolean {
+  return state.players.filter((p) => !p.left).every((p) => state.winners.some((w) => w.playerId === p.id));
 }
 
 export function endBingoGame(state: BingoState, at: number): BingoState {

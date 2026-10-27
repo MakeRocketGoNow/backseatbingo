@@ -14,6 +14,7 @@
   --win-fg: #ffffff;
   --danger: #b3261e;
   --danger-fg: #ffffff;
+  --pending: #9a6700;
   --radius: 16px;
   --tap: 56px;
   --gap: 12px;
@@ -36,6 +37,7 @@
     --win-fg: #04210f;
     --danger: #ff7b72;
     --danger-fg: #2b0300;
+    --pending: #e3b341;
   }
 }
 
@@ -352,6 +354,8 @@ a {
   gap: 8px;
   padding: 8px 14px;
   border-radius: 999px;
+  /* Transparent so a departed player's dashed border does not change the chip's size. */
+  border: 2px solid transparent;
   background: var(--surface);
   font-weight: 700;
   white-space: nowrap;
@@ -365,6 +369,13 @@ a {
 .score-value {
   font-size: 1.2rem;
   font-weight: 900;
+}
+
+/* Left the trip mid-round: the score stands, the chip steps back. */
+.score-left:not(.score-leader) {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--border);
 }
 
 /* Called It chips */
@@ -533,6 +544,21 @@ a {
   color: var(--muted);
 }
 
+/* A line of text under a board's scoreboard. */
+.board-note {
+  margin: 8px 16px 0;
+}
+
+/* Long unbroken text such as a link. */
+.break-anywhere {
+  overflow-wrap: anywhere;
+}
+
+/* A text button that lines up with the text around it. */
+.btn-flush {
+  padding-left: 0;
+}
+
 /* Standings (winner screen) */
 
 .standings {
@@ -595,6 +621,11 @@ a {
   gap: 10px;
   max-height: 85dvh;
   overflow-y: auto;
+}
+
+/* Focused on open so keyboard users start inside; the sheet itself needs no ring. */
+.sheet:focus {
+  outline: none;
 }
 
 .sheet-title {
@@ -670,4 +701,167 @@ a {
   background: var(--surface);
   color: var(--muted);
   font-weight: 600;
+}
+
+/* Pending claims (host approvals) */
+
+.chip-pending {
+  border-style: dashed;
+  border-color: var(--pending);
+  background: color-mix(in srgb, var(--pending) 14%, var(--surface));
+}
+
+.chip-pending .chip-claimer {
+  color: var(--pending);
+}
+
+/* Rooms */
+
+.conn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.conn-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.conn-open .conn-dot {
+  background: var(--win);
+}
+
+.conn-connecting .conn-dot,
+.conn-reconnecting .conn-dot {
+  background: var(--pending);
+  animation: conn-pulse 1s ease-in-out infinite alternate;
+}
+
+.conn-reconnecting {
+  background: color-mix(in srgb, var(--pending) 18%, var(--bg));
+  color: var(--fg);
+}
+
+.conn-closed .conn-dot {
+  background: var(--danger);
+}
+
+@keyframes conn-pulse {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.page-bleed .conn {
+  padding-left: 16px;
+}
+
+.code-box {
+  text-align: center;
+  padding: 8px 0 0;
+}
+
+.code-label {
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+}
+
+.code-big {
+  font-size: 4rem;
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  padding-left: 0.25em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.code-input {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.qr {
+  display: inline-block;
+  background: #fff;
+  padding: 8px;
+  border-radius: 12px;
+}
+
+.qr img {
+  display: block;
+}
+
+.player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 700;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.dot-on {
+  background: var(--win);
+}
+
+.dot-off {
+  background: var(--border);
+}
+
+.tag {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Read by screen readers, not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

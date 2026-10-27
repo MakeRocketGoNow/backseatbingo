@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { PackItem, Player } from '../shared/types';
-import { claim, createSpotItGame, endSpotItGame, isExhausted, reassign, spotItStandings, unclaim } from './spotit';
+import {
+  addSpotItPlayer,
+  approveClaim,
+  claim,
+  createSpotItGame,
+  endSpotItGame,
+  isExhausted,
+  reassign,
+  spotItStandings,
+  unclaim,
+} from './spotit';
 
 const players: Player[] = [
   { id: 'p1', name: 'Mom' },
@@ -120,5 +130,54 @@ describe('Called It scoring', () => {
       ['p3', 1, 1],
       ['p2', 0, 3],
     ]);
+  });
+});
+
+describe('Called It with host approvals', () => {
+  it('a pending claim reserves the item but does not score', () => {
+    const r1 = claim(fresh(), 'a', 'p1', 1, true);
+    if (!r1.ok) throw new Error(r1.error);
+    expect(r1.state.claims['a']?.status).toBe('pending');
+    expect(spotItStandings(r1.state).find((s) => s.player.id === 'p1')?.score).toBe(0);
+    expect(claim(r1.state, 'a', 'p2', 2)).toEqual({ ok: false, error: 'already-claimed' });
+  });
+
+  it('approve scores it and can end the game; reject frees it', () => {
+    let s = fresh();
+    for (const item of ['a', 'b', 'c']) {
+      const r = claim(s, item, 'p1', 1, true);
+      if (!r.ok) throw new Error(r.error);
+      s = r.state;
+    }
+    expect(isExhausted(s)).toBe(false);
+    const rej = unclaim(s, 'c');
+    if (!rej.ok) throw new Error(rej.error);
+    expect(rej.state.claims['c']).toBeUndefined();
+
+    let t = s;
+    for (const item of ['a', 'b', 'c']) {
+      const r = approveClaim(t, item, 5);
+      if (!r.ok) throw new Error(r.error);
+      t = r.state;
+    }
+    expect(spotItStandings(t)[0]?.score).toBe(3);
+    expect(t.status).toBe('ended');
+    expect(approveClaim(fresh(), 'a', 1)).toEqual({ ok: false, error: 'not-claimed' });
+  });
+
+  it('approving an already approved claim is a no-op', () => {
+    const r1 = claim(fresh(), 'a', 'p1', 1);
+    if (!r1.ok) throw new Error(r1.error);
+    const r2 = approveClaim(r1.state, 'a', 2);
+    expect(r2.ok && r2.state).toBe(r1.state);
+  });
+});
+
+describe('late joiners', () => {
+  it('addSpotItPlayer is idempotent and lets the new player claim', () => {
+    const s1 = addSpotItPlayer(fresh(), { id: 'p9', name: 'Late' });
+    expect(s1.players).toHaveLength(4);
+    expect(addSpotItPlayer(s1, { id: 'p9', name: 'Late' })).toBe(s1);
+    expect(claim(s1, 'a', 'p9', 1).ok).toBe(true);
   });
 });

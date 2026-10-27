@@ -7,27 +7,42 @@ Two modes:
 - **Called It**: one shared list, the first person to tap an item claims it. Most claims wins.
 - **Bingo**: everyone gets a random 5x5 card. First to complete the pattern wins.
 
-Phase 1 (this build) plays on a single phone: named players pass it around. Rooms with everyone on their own device come in Phase 2. See [docs/DESIGN.md](docs/DESIGN.md) for the design notes and decisions log.
+Play on one phone (named players pass it around) or start a trip: the host gets a 4-letter code and a QR link, everyone else joins from their own phone in any browser. See [docs/DESIGN.md](docs/DESIGN.md) for the design notes and decisions log.
 
 ## Develop
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev         # client on http://localhost:5173
+pnpm api         # Worker + Durable Object on http://localhost:8787 (rooms)
 ```
 
+Vite proxies `/api` to the Worker, so rooms work from the dev server. `pnpm api` serves the last `pnpm build` output as static assets, so run a build once before starting it. To act as a second player on the same machine, open the Worker's own origin, `http://localhost:8787`, which has separate browser storage and therefore a separate player token.
+
 ```bash
-pnpm test        # Vitest, game rules
-pnpm typecheck   # tsc strict
-pnpm build       # typecheck + Vite production build
+pnpm test                      # Vitest, game and room rules
+pnpm typecheck                 # tsc strict, client and Worker
+pnpm build                     # typecheck + Vite production build
+node scripts/smoke-room.mjs    # end-to-end room flow against pnpm api
 ```
+
+## Deploy
+
+```bash
+pnpm exec wrangler login       # once
+pnpm deploy                    # build, then wrangler deploy
+```
+
+The Worker serves the static client and the `/api/*` routes from one deployment. Rooms are Durable Objects with WebSocket hibernation and delete themselves 24 hours after the last message.
 
 ## Layout
 
-- `game/` pure game rules, no React or Cloudflare imports, unit tested. Both the local store and the future room Durable Object call these.
+- `game/` pure game rules, no React or Cloudflare imports, unit tested. Both the local store and the room Durable Object call these.
 - `shared/` types used by the client and the Worker.
 - `packs/` content packs as JSON. `family.json` is sample content; real lists go in the gitignored `packs/private/` and override a committed pack with the same id. Every pack is free in v1; `isPackUnlocked()` in `game/pack.ts` is the entitlement stub.
-- `src/app/` React client: `screens/`, `components/`, `store/` (local game, packs via TanStack Query, settings), `router.tsx`.
+- `src/app/` React client: `screens/`, `components/` (boards shared by local and room play, and room controls used on more than one screen), `store/` (local game, room connection, packs via TanStack Query, settings), `router.tsx`.
+- `worker/` Cloudflare Worker entry and the room Durable Object. Rules are not here; they are in `game/room.ts`. `stored.ts` holds the room's pure token bookkeeping, unit tested like `game/`.
+- `scripts/` the room smoke test.
 
 ## License
 

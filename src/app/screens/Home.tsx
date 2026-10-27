@@ -26,17 +26,18 @@ export function Home() {
               Resume {MODE_LABELS[game.mode]}
             </button>
           )}
-          <Link to="/setup" className="btn btn-primary btn-big" onClick={() => inProgress && clear()}>
-            Play on this phone
-          </Link>
-          <button className="btn btn-big" disabled title="Coming soon">
+          <Link to="/host" className="btn btn-primary btn-big">
             Start a trip
-            <span className="btn-sub">Coming soon</span>
-          </button>
-          <button className="btn btn-big" disabled title="Coming soon">
+            <span className="btn-sub">Everyone plays on their own phone</span>
+          </Link>
+          <Link to="/join" className="btn btn-big">
             Join a trip
-            <span className="btn-sub">Coming soon</span>
-          </button>
+            <span className="btn-sub">Got a code or a link?</span>
+          </Link>
+          <Link to="/setup" className="btn btn-big" onClick={() => inProgress && clear()}>
+            Play on this phone
+            <span className="btn-sub">No signal needed, pass it around</span>
+          </Link>
           <Link to="/lists" className="btn btn-outline">
             Custom lists
           </Link>
@@ -44,11 +45,7 @@ export function Home() {
 
         <label className="switch">
           <span>Sound</span>
-          <input
-            type="checkbox"
-            checked={settings.sound}
-            onChange={(e) => setSettings({ ...settings, sound: e.target.checked })}
-          />
+          <input type="checkbox" checked={settings.sound} onChange={(e) => setSettings({ ...settings, sound: e.target.checked })} />
         </label>
       </main>
     </div>

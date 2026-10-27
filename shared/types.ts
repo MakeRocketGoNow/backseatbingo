@@ -1,4 +1,4 @@
-// Types shared by the client, the pure game module and (in Phase 2) the Worker.
+// Types shared by the client, the pure game module and the Worker.
 // Nothing in here may import React or Cloudflare APIs.
 
 export type Mode = 'spotit' | 'bingo';
@@ -47,11 +47,17 @@ export const BINGO_PATTERN_LABELS: Record<BingoPattern, string> = {
 export interface Player {
   id: string;
   name: string;
+  /**
+   * Rooms only: this player left the trip during the round. Their score and
+   * card stay, but they are out of the pickers and of "everyone has bingo".
+   * Rejoining clears it; the next round starts without them.
+   */
+  left?: boolean;
 }
 
 /**
- * A claim on an item in Called It. `pending` is reserved for the Phase 2
- * "host approves" room setting; Phase 1 only ever produces `claimed`.
+ * A claim on an item in Called It. `pending` is a guest's claim waiting for
+ * the host under the "host approves" room setting; everything else is `claimed`.
  */
 export interface Claim {
   itemId: string;
@@ -105,4 +111,60 @@ export interface Standing {
   score: number;
   /** 1-based rank; tied players share a rank. */
   rank: number;
+}
+
+// ---- Rooms (Phase 2) ----
+
+/** Who approves Called It claims in a room. The host's own claims never wait. */
+export type Approvals = 'auto' | 'host';
+
+export const APPROVALS_LABELS: Record<Approvals, string> = {
+  auto: 'First tap wins',
+  host: 'Host approves each call',
+};
+
+export interface RoomSettings {
+  mode: Mode;
+  listLength: ListLength;
+  pattern: BingoPattern;
+  approvals: Approvals;
+}
+
+export interface RoomPlayer extends Player {
+  connected: boolean;
+  joinedAt: number;
+}
+
+export type RoomStatus = 'lobby' | 'playing' | 'ended' | 'closed';
+
+export const MAX_ROOM_PLAYERS = 12;
+
+/** Longest player name, in characters. Longer names are cut on join. */
+export const MAX_NAME_LENGTH = 20;
+
+/**
+ * Largest list a room takes. Every update a room sends carries the list (and
+ * a long Called It game copies all of it), so the cap keeps updates small on
+ * car signal. Real lists are far shorter: the sample has 48 items of about 40
+ * characters.
+ */
+export const MAX_PACK_ITEMS = 150;
+export const MAX_ITEM_LENGTH = 100;
+
+/**
+ * Everything a client needs to render a room. The Durable Object stores this
+ * plus a private token map, and broadcasts this whole object after any change.
+ */
+export interface RoomState {
+  code: string;
+  status: RoomStatus;
+  hostId: string;
+  players: RoomPlayer[];
+  settings: RoomSettings;
+  /** The full pack, so guests never need a custom list locally. */
+  pack: Pack;
+  game: GameState | null;
+  round: number;
+  createdAt: number;
+  updatedAt: number;
 }
