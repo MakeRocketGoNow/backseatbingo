@@ -44,7 +44,7 @@ Design direction: big tap targets (a kid in a moving car), high contrast, readab
 
 1. **Local game.** Both modes on one device, pass-and-play Bingo, pack loading, custom lists. No backend.
 2. **Rooms.** Worker + DO, lobby, join flow, reconnect, host controls.
-3. **PWA polish.** Manifest, service worker, install prompt for the host, offline fallback to local mode.
+3. **PWA polish.** Manifest, service worker, install prompt for the host, offline fallback to local mode, tip line.
 4. **Android.** TWA package and store listing.
 5. **iOS.** Capacitor shell with haptics, share sheet, keep-awake.
 
@@ -56,7 +56,13 @@ The DO broadcasts the whole room after every change. Each client message carries
 
 Host approvals is a room setting: "auto" claims on tap and the host can undo; "host approves" makes guest claims pending (they still reserve the item) until the host approves or rejects. The host's own claims never wait.
 
+## Offline and install
+
+The service worker is hand-written (`sw/`) and emitted by a small Vite plugin rather than a PWA plugin: the bundle is a handful of files and the rules are three lines (precache the shell and hashed assets, serve navigations from the cached shell, never cache `/api/`). A new build waits instead of taking over, because a page mid-game must keep the assets it was built with; the app offers a reload. Home says when there is no signal and points at local play. Install is offered to the host only, on the room winner screen, once a trip has gone well; Chrome's prompt where it exists, a Share menu pointer on iOS Safari, nothing once installed or declined.
+
 ## Decisions log
+
+- **2026-10-26, Phase 3 scope.** No PWA plugin; the worker is a few lines and the plugin that emits it is smaller than the configuration one would need. Updates never interrupt a game. The tip link is a build-time variable with a placeholder in the repo, so the public source never carries the real link, and the same mechanism hides the line in the iOS build.
 
 - **2026-10-26, Phase 2 scope.** No renaming mid-game. Host approvals ship in Phase 2 with "auto" as the default.
 - **2026-10-26, new rounds.** "Play again" in a room starts the next round immediately with the host's chosen settings rather than returning everyone to the lobby; latecomers can still join mid-game. The lobby exists for the first gathering only.
