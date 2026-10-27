@@ -1,5 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { MODE_LABELS } from '@shared/types';
+import { OFFLINE_MESSAGE } from '@app/api';
 import { useGame } from '@app/store/game';
 import { useOnline } from '@app/store/online';
 import { useSettings } from '@app/store/settings';
@@ -33,7 +34,7 @@ export function Home() {
               anyone taps. */}
           {!online && (
             <div className="notice center" role="status">
-              No signal. Trips need one; playing on this phone works without it.
+              {OFFLINE_MESSAGE}
             </div>
           )}
           <Link to="/host" className="btn btn-primary btn-big" disabled={!online}>
