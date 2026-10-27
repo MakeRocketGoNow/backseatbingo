@@ -599,6 +599,11 @@ a {
   overflow-y: auto;
 }
 
+/* Focused on open so keyboard users start inside; the sheet itself needs no ring. */
+.sheet:focus {
+  outline: none;
+}
+
 .sheet-title {
   font-size: 1.3rem;
   font-weight: 800;
