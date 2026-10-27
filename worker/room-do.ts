@@ -3,7 +3,7 @@ import type { ClientMessage, CreateRoomRequest, RoomErrorCode, RoomInfoResponse,
 import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED, isClientMessage } from '../shared/protocol';
 import type { RoomState } from '../shared/types';
 import { MAX_ROOM_PLAYERS } from '../shared/types';
-import { applyAction, createRoom, joinRoom, setConnected } from '../game/room';
+import { applyAction, createRoom, findPlayer, joinRoom, setConnected } from '../game/room';
 import { closedSocket } from './closed-socket';
 import type { Env } from './env';
 
@@ -15,6 +15,7 @@ import type { Env } from './env';
  */
 
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
+const ALARM_SLACK_MS = 60 * 60 * 1000;
 const STORAGE_KEY = 'room';
 /** Sockets from devices not in the room yet: people on the Join screen, and anyone probing codes. */
 const MAX_UNJOINED_SOCKETS = MAX_ROOM_PLAYERS * 2;
@@ -39,6 +40,8 @@ function newPlayerId(): string {
 
 export class RoomDO extends DurableObject<Env> {
   private cache: Stored | null | undefined;
+  /** When this instance last pushed the expiry alarm back. Zero after waking, so the first save sets it. */
+  private alarmSetAt = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -56,7 +59,12 @@ export class RoomDO extends DurableObject<Env> {
   private async save(stored: Stored): Promise<void> {
     this.cache = stored;
     await this.ctx.storage.put(STORAGE_KEY, stored);
-    await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
+    // Pushing the expiry back on every tap doubles the writes; an hour of slack on 24 is fine.
+    const now = Date.now();
+    if (now - this.alarmSetAt > ALARM_SLACK_MS) {
+      this.alarmSetAt = now;
+      await this.ctx.storage.setAlarm(now + ROOM_TTL_MS);
+    }
   }
 
   private async destroy(): Promise<void> {
@@ -68,6 +76,7 @@ export class RoomDO extends DurableObject<Env> {
         // already closed
       }
     }
+    this.alarmSetAt = 0;
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
   }
@@ -263,7 +272,8 @@ export class RoomDO extends DurableObject<Env> {
     const stored = await this.load();
     if (!att || !stored || stored.room.status === 'closed') return;
     const playerId = stored.tokens[att.token];
-    if (!playerId) return;
+    // A guest who just left is no longer in the room; there is nothing to mark.
+    if (!playerId || !findPlayer(stored.room, playerId)) return;
     // Another tab on the same device may still be open.
     const stillOpen = this.ctx
       .getWebSockets()
