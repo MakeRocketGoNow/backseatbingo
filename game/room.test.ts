@@ -233,6 +233,10 @@ describe('leaving mid-round', () => {
     }
     expect(r.game?.players).toHaveLength(MAX_ROOM_PLAYERS * 2);
     expect(joinRoom(r, { id: 'late', name: 'Late' }, 6, rng()).error?.code).toBe('room-full');
+    // Someone already listed can still come back, and the cap lifts once the round is over.
+    expect(joinRoom(r, { id: 'x0', name: 'X0' }, 6, rng()).error).toBeUndefined();
+    const ended = must(applyAction(r, 'h', { type: 'end' }, 7, rng()));
+    expect(joinRoom(ended, { id: 'late', name: 'Late' }, 8, rng()).error).toBeUndefined();
   });
 });
 

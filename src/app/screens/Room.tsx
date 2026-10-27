@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from '@tanstack/react-router';
-import { MAX_ROOM_PLAYERS } from '@shared/types';
 import { BingoBoard } from '@app/components/BingoBoard';
 import { CalledItBoard } from '@app/components/CalledItBoard';
 import { CloseTripButton } from '@app/components/CloseTripButton';
@@ -139,7 +138,7 @@ function closedCopy(reason: NonNullable<CloseReason>, code: string, youAreHost: 
     case 'not-found':
       return { title: 'Trip over', headline: `Trip ${code} has ended`, sub: 'The code no longer works.' };
     case 'full':
-      return { title: 'Trip full', headline: `Trip ${code} is full`, sub: `It already has ${MAX_ROOM_PLAYERS} players.` };
+      return { title: 'Trip full', headline: `Trip ${code} is full`, sub: 'There is no space for anyone else right now.' };
     case 'host-closed':
       return youAreHost
         ? { title: 'Trip over', headline: 'Trip closed', sub: 'The code no longer works.' }

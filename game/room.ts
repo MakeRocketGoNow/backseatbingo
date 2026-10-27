@@ -84,7 +84,8 @@ export function joinRoom(room: RoomState, player: Player, now: number, rng: Rng)
   );
   if (taken) return fail(room, 'name-taken', `Someone here is already called ${name}. Pick another name.`);
   const returning = room.game?.players.some((p) => p.id === player.id) ?? false;
-  if (!returning && room.game && room.game.players.length >= MAX_GAME_PLAYERS) {
+  // Only a join during play grows the round's roster; between rounds there is nothing to cap.
+  if (!returning && room.status === 'playing' && room.game && room.game.players.length >= MAX_GAME_PLAYERS) {
     return fail(room, 'room-full', 'This trip is full.');
   }
   const roomPlayer: RoomPlayer = { id: player.id, name, connected: true, joinedAt: now };
