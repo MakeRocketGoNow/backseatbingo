@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Pack, RoomSettings, RoomState } from '../shared/types';
-import { MAX_ROOM_PLAYERS } from '../shared/types';
+import { MAX_NAME_LENGTH, MAX_ROOM_PLAYERS } from '../shared/types';
 import { applyAction, createRoom, joinRoom, setConnected } from './room';
 import { seededRng } from './rng';
 
@@ -196,6 +196,22 @@ describe('rounds and leaving', () => {
     expect(applyAction(closed, 'g1', { type: 'claim', itemId: 'x' }, 4, rng()).error?.code).toBe('room-closed');
     expect(joinRoom(closed, { id: 'g9', name: 'New' }, 5, rng()).error?.code).toBe('room-closed');
     expect(must(applyAction(r, 'h', { type: 'leave' }, 3, rng())).status).toBe('closed');
+  });
+
+  it('a new player needs a name, cut to the maximum length', () => {
+    expect(joinRoom(room(), { id: 'g2', name: '   ' }, 3, rng()).error?.code).toBe('not-joined');
+    const long = must(joinRoom(room(), { id: 'g2', name: '  ' + 'x'.repeat(30) }, 3, rng()));
+    expect(long.players.find((p) => p.id === 'g2')?.name).toBe('x'.repeat(MAX_NAME_LENGTH));
+  });
+
+  it('a guest who left needs a name to come back', () => {
+    const left = must(applyAction(room(), 'g1', { type: 'leave' }, 3, rng()));
+    expect(joinRoom(left, { id: 'g1', name: '' }, 4, rng()).error?.code).toBe('not-joined');
+  });
+
+  it('a known player keeps their name on reconnect', () => {
+    const r = must(joinRoom(room(), { id: 'g1', name: '' }, 3, rng()));
+    expect(r.players.find((p) => p.id === 'g1')?.name).toBe('Kid');
   });
 
   it('unknown players are rejected', () => {

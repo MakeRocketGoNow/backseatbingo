@@ -169,18 +169,13 @@ export class RoomDO extends DurableObject<Env> {
     let playerId = stored.tokens[att.token];
 
     if (msg.type === 'join') {
-      const name = typeof msg.name === 'string' ? msg.name.trim().slice(0, 20) : '';
+      // The rules decide who may join; this only gives a new device an id.
       const tokens = { ...stored.tokens };
       if (!playerId) {
-        if (!name) {
-          this.send(ws, { type: 'error', code: 'not-joined', message: 'Pick a name first.', seq: msg.seq });
-          return;
-        }
         playerId = newPlayerId();
         tokens[att.token] = playerId;
       }
-      const known = stored.room.players.find((p) => p.id === playerId);
-      const result = joinRoom(stored.room, { id: playerId, name: known?.name ?? name }, now, Math.random);
+      const result = joinRoom(stored.room, { id: playerId, name: msg.name }, now, Math.random);
       if (result.error) {
         this.send(ws, { type: 'error', code: toErrorCode(result.error.code), message: result.error.message, seq: msg.seq });
         return;

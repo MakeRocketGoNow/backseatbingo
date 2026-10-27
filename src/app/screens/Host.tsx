@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
+import { MAX_NAME_LENGTH } from '@shared/types';
 import { canPlayBingo, isPackUnlocked } from '@game/index';
 import { createRoom } from '@app/api';
 import { Page } from '@app/components/Page';
@@ -60,7 +61,7 @@ export function Host() {
         className="input"
         value={name}
         placeholder="Dad"
-        maxLength={20}
+        maxLength={MAX_NAME_LENGTH}
         autoComplete="nickname"
         enterKeyHint="done"
         onChange={(e) => setName(e.target.value)}

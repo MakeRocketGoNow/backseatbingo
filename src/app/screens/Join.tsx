@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
+import { MAX_NAME_LENGTH } from '@shared/types';
 import { CODE_LENGTH, isValidRoomCode, normalizeRoomCode } from '@game/index';
 import { getRoomInfo } from '@app/api';
 import { Page } from '@app/components/Page';
@@ -70,7 +71,7 @@ export function Join({ initialCode }: { initialCode?: string }) {
           className="input"
           value={name}
           placeholder="Kid"
-          maxLength={20}
+          maxLength={MAX_NAME_LENGTH}
           autoComplete="nickname"
           enterKeyHint="go"
           onChange={(e) => setName(e.target.value)}

@@ -1,7 +1,7 @@
 import type { ClientAction } from '../shared/protocol';
 import type { RoomErrorCode } from '../shared/protocol';
 import type { GameState, Pack, Player, RoomPlayer, RoomSettings, RoomState } from '../shared/types';
-import { MAX_ROOM_PLAYERS } from '../shared/types';
+import { MAX_NAME_LENGTH, MAX_ROOM_PLAYERS } from '../shared/types';
 import { addBingoPlayer, callBingo, createBingoGame, endBingoGame, setMark, type BingoError } from './bingo';
 import { canPlayBingo, drawItems } from './pack';
 import type { Rng } from './rng';
@@ -60,13 +60,17 @@ export function isHost(room: RoomState, playerId: string): boolean {
   return room.hostId === playerId;
 }
 
-/** Add a player. A player already in the room is just marked connected. */
+/**
+ * Add a player. A player already in the room is just marked connected and
+ * keeps their name; anyone else needs a name.
+ */
 export function joinRoom(room: RoomState, player: Player, now: number, rng: Rng): RoomResult {
   if (room.status === 'closed') return fail(room, 'room-closed', 'This trip has ended.');
   const existing = findPlayer(room, player.id);
   if (existing) return ok(setConnected(room, player.id, true, now));
+  const name = player.name.trim().slice(0, MAX_NAME_LENGTH);
+  if (!name) return fail(room, 'not-joined', 'Pick a name first.');
   if (room.players.length >= MAX_ROOM_PLAYERS) return fail(room, 'room-full', 'This trip is full.');
-  const name = player.name.trim();
   if (room.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
     return fail(room, 'name-taken', `Someone here is already called ${name}. Pick another name.`);
   }

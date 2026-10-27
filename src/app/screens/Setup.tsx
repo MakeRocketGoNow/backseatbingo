@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import type { Player } from '@shared/types';
-import { MODE_LABELS } from '@shared/types';
+import { MAX_NAME_LENGTH, MODE_LABELS } from '@shared/types';
 import { canPlayBingo, createBingoGame, createSpotItGame, drawItems, isPackUnlocked, randomSeed, seededRng } from '@game/index';
 import { Page } from '@app/components/Page';
 import { SettingsForm, type GameSettings } from '@app/components/SettingsForm';
@@ -66,7 +66,7 @@ export function Setup() {
               className="input"
               value={n}
               placeholder={`Player ${i + 1}`}
-              maxLength={20}
+              maxLength={MAX_NAME_LENGTH}
               autoComplete="off"
               enterKeyHint="next"
               onChange={(e) => setNames((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}

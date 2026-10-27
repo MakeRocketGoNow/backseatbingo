@@ -133,6 +133,9 @@ export type RoomStatus = 'lobby' | 'playing' | 'ended' | 'closed';
 
 export const MAX_ROOM_PLAYERS = 12;
 
+/** Longest player name, in characters. Longer names are cut on join. */
+export const MAX_NAME_LENGTH = 20;
+
 /**
  * Everything a client needs to render a room. The Durable Object stores this
  * plus a private token map, and broadcasts this whole object after any change.

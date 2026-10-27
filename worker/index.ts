@@ -1,5 +1,6 @@
 import type { CreateRoomRequest, CreateRoomResponse } from '../shared/protocol';
 import { CLOSE_NOT_FOUND } from '../shared/protocol';
+import { MAX_NAME_LENGTH } from '../shared/types';
 import { isRecord, isRoomPack, isRoomSettings } from '../shared/validate';
 import { generateRoomCode, isValidRoomCode } from '../game/codes';
 import { closedSocket } from './closed-socket';
@@ -9,7 +10,6 @@ import { RoomDO } from './room-do';
 export { RoomDO };
 
 const MAX_BODY_BYTES = 128 * 1024;
-const MAX_NAME = 20;
 const CODE_ATTEMPTS = 8;
 
 function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {
@@ -27,7 +27,7 @@ function isCreateRequest(v: unknown): v is CreateRoomRequest {
     v['token'].length <= 64 &&
     typeof v['name'] === 'string' &&
     v['name'].trim().length > 0 &&
-    v['name'].length <= MAX_NAME &&
+    v['name'].length <= MAX_NAME_LENGTH &&
     isRoomSettings(v['settings']) &&
     isRoomPack(v['pack'])
   );
