@@ -10,8 +10,9 @@ import { forgetDeparted, forgetLeaver, isMember, type Stored } from './stored';
 /**
  * One Durable Object per room. It stores the whole room under one key, keeps
  * WebSockets through hibernation, and deletes itself about 24 hours after the
- * last change it saved (heartbeats and rejected messages do not count). All rules live in game/room.ts; this class only parses, checks the
- * caller's identity, persists and broadcasts.
+ * last change it saved (heartbeats and rejected messages do not count). All
+ * rules live in game/room.ts; this class only parses, checks the caller's
+ * identity, persists and broadcasts.
  */
 
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
