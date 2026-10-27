@@ -62,6 +62,8 @@ The service worker is hand-written (`sw/`) and emitted by a small Vite plugin ra
 
 ## Decisions log
 
+- **2026-10-26, deploys.** Every green push to `main` goes live; there is no release step. Same-repository PRs get a throwaway preview Worker with its own rooms and rate limits, deleted when the PR closes. Production's tip link comes from a CI secret, and the tip line stays hidden until that secret is set.
+
 - **2026-10-26, protocol version.** The installed app serves its cached build until someone taps Reload, so a phone can meet a newer server. The version is checked when the socket opens, not in `join`, because a change to `join` itself would fail message validation before a version inside it could be read. The server compares against a minimum rather than an exact version: a bump of the minimum sends every open trip on an older build to a reload (a deploy reconnects every socket), so it is raised only for changes that break older clients. This is the one case where an update interrupts a game, because the alternative is a game that silently stops working.
 
 - **2026-10-26, Phase 3 scope.** No PWA plugin; the worker is a few lines and the plugin that emits it is smaller than the configuration one would need. Updates never interrupt a game. The tip link is a build-time variable left empty in the repo, so the public source never carries the real link and a build without it shows no tip line, and the same mechanism hides the line in the iOS build.

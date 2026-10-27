@@ -1,0 +1,6 @@
+# pnpm 12 reads build-script approvals from here, not from package.json.
+# Only these dependencies may run install scripts; anything else is ignored.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true

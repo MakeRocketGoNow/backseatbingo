@@ -26,6 +26,8 @@ pnpm build                     # typecheck + Vite production build
 node scripts/smoke-room.mjs    # end-to-end room flow against pnpm api
 ```
 
+CI runs the tests and the build (which includes the typecheck) on every pull request and on pushes to `main`.
+
 ## Progressive web app
 
 The production build is installable and opens offline. `vite.config.ts` emits `sw.js` from `sw/sw.ts` with the bundle's file list baked in; the worker precaches the shell and assets, serves every navigation from the cached shell, and never touches `/api/`. A new deploy installs in the background and the app offers "A new version is ready. Reload" rather than swapping assets under a game in progress.
@@ -35,6 +37,12 @@ The Vite dev server never registers the worker. To try it, build and open the Wo
 The winner screen's tip line reads its link from `VITE_TIP_URL`. `.env` leaves it empty, which hides the line; put the real link in `.env.local`, which is gitignored.
 
 ## Deploy
+
+Every push to `main` that passes the checks is deployed by `.github/workflows/ci.yml`. It needs two repository secrets, `CLOUDFLARE_API_TOKEN` (an API token with the Workers Scripts edit permission) and `CLOUDFLARE_ACCOUNT_ID`, and reads the tip link from an optional `VITE_TIP_URL` secret; with that one unset the tip line is hidden. The job runs in the `production` environment, but a protection rule there, such as a required reviewer, only gates that job: the preview workflow reads the same repository secrets from any branch in this repository. For a rule to protect production, store production's token as a `production` environment secret and give previews a token of their own. A deploy waiting for a reviewer's approval also holds up every later run on `main` until it is approved or rejected.
+
+Pull requests can get a preview of their own: set the `CLOUDFLARE_WORKERS_SUBDOMAIN` repository variable to the account's workers.dev subdomain (the part before `.workers.dev`) and `.github/workflows/previews.yml` deploys each PR as its own Worker, `backseatbingo-pr-<number>`, comments the URL on the PR, and deletes the Worker when the PR closes. A preview has rooms of its own, since Durable Objects belong to the Worker that declares them, and its own rate-limit counters from the `preview` env in `wrangler.jsonc`, so it never touches production. Until the variable is set, the preview jobs skip themselves.
+
+To deploy by hand instead:
 
 ```bash
 pnpm exec wrangler login       # once
