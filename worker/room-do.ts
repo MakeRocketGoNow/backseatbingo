@@ -20,10 +20,14 @@ interface Stored {
   room: RoomState;
   /** Device token to player id. Never sent to clients. */
   tokens: Record<string, string>;
+  /** Per device token, the client session and the highest seq applied from it. */
+  applied?: Record<string, { session: string; seq: number }>;
 }
 
 interface Attachment {
   token: string;
+  /** Set by `join`; the client's page-load session. */
+  session?: string;
 }
 
 function newPlayerId(): string {
@@ -175,12 +179,13 @@ export class RoomDO extends DurableObject<Env> {
         playerId = newPlayerId();
         tokens[att.token] = playerId;
       }
+      if (msg.session) ws.serializeAttachment({ ...att, session: msg.session } satisfies Attachment);
       const result = joinRoom(stored.room, { id: playerId, name: msg.name }, now, Math.random);
       if (result.error) {
         this.send(ws, { type: 'error', code: toErrorCode(result.error.code), message: result.error.message, seq: msg.seq });
         return;
       }
-      const next: Stored = { room: result.room, tokens };
+      const next: Stored = { ...stored, room: result.room, tokens };
       await this.save(next);
       this.broadcast(next, ws, msg.seq);
       return;
@@ -188,6 +193,14 @@ export class RoomDO extends DurableObject<Env> {
 
     if (!playerId) {
       this.send(ws, { type: 'error', code: 'not-joined', message: 'Join the trip first.', seq: msg.seq });
+      return;
+    }
+
+    // A resend of a tap already applied (its ack was lost with the old socket):
+    // acknowledge it again rather than apply it twice.
+    const applied = stored.applied?.[att.token];
+    if (att.session && applied?.session === att.session && msg.seq <= applied.seq) {
+      this.send(ws, { type: 'state', state: stored.room, you: playerId, ack: msg.seq });
       return;
     }
 
@@ -201,7 +214,11 @@ export class RoomDO extends DurableObject<Env> {
       });
       return;
     }
-    const next: Stored = { room: result.room, tokens: stored.tokens };
+    const next: Stored = {
+      ...stored,
+      room: result.room,
+      applied: att.session ? { ...stored.applied, [att.token]: { session: att.session, seq: msg.seq } } : stored.applied,
+    };
     await this.save(next);
     this.broadcast(next, ws, msg.seq);
 

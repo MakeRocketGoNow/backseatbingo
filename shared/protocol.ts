@@ -27,7 +27,11 @@ export interface RoomInfoResponse {
 // offline queue.
 
 export type ClientAction =
-  | { type: 'join'; name: string }
+  /**
+   * `session` is random per page load. With `seq`, it lets the room recognise
+   * a tap it already applied when the client resends it after losing the ack.
+   */
+  | { type: 'join'; name: string; session?: string }
   | { type: 'start' }
   | { type: 'claim'; itemId: string }
   | { type: 'unclaim'; itemId: string }
@@ -79,7 +83,7 @@ export function isClientMessage(v: unknown): v is ClientMessage {
   if (v['round'] !== undefined && !Number.isInteger(v['round'])) return false;
   switch (v['type'] as ClientAction['type']) {
     case 'join':
-      return typeof v['name'] === 'string';
+      return typeof v['name'] === 'string' && (v['session'] === undefined || (typeof v['session'] === 'string' && v['session'].length <= 64));
     case 'start':
     case 'bingo':
     case 'end':

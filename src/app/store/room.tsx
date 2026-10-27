@@ -40,6 +40,8 @@ interface Callbacks {
 export class RoomConnection {
   private ws: WebSocket | null = null;
   private seq = 0;
+  /** Lets the room tell this page's resent taps from new ones; `seq` restarts on reload. */
+  private readonly session = crypto.randomUUID();
   private pending: ClientMessage[] = [];
   private attempt = 0;
   private timer: number | undefined;
@@ -117,7 +119,7 @@ export class RoomConnection {
       // A known token makes this a reconnect; the server ignores the name then.
       // The join takes seq 0, below every queued tap, so its ack cannot drop
       // taps the server has not seen yet.
-      this.raw({ type: 'join', name: this.name, seq: 0 });
+      this.raw({ type: 'join', name: this.name, session: this.session, seq: 0 });
       for (const m of this.pending) this.raw(m);
     };
     ws.onmessage = (e: MessageEvent<string>) => {

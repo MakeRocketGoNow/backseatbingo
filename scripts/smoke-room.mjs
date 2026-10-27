@@ -38,6 +38,8 @@ function connect(code, tok) {
       ws.send(JSON.stringify({ ...action, seq }));
       return seq;
     },
+    /** Send with an explicit seq, as a reconnecting client does. */
+    raw: (msg) => ws.send(JSON.stringify(msg)),
     next: () =>
       inbox.length ? Promise.resolve(inbox.shift()) : new Promise((resolve) => waiters.push(resolve)),
     /** Drain until a message matching pred arrives (with a timeout). */
@@ -112,7 +114,8 @@ async function main() {
   guest.send({ type: 'claim', itemId: 'x' });
   const notJoined = await guest.until((m) => m.type === 'error', 'error before join');
   assert(notJoined.code === 'not-joined', 'acting before join is rejected');
-  const joinSeq = guest.send({ type: 'join', name: 'Kid' });
+  const session = crypto.randomUUID();
+  const joinSeq = guest.send({ type: 'join', name: 'Kid', session });
   st = await guest.until((m) => m.type === 'state' && m.ack === joinSeq, 'guest state with ack');
   assert(st.state.players.length === 2 && st.you !== st.state.hostId, 'guest is in the room as a non-host');
   const hostView = await host.until((m) => m.type === 'state' && m.state.players.length === 2, 'host sees guest');
@@ -128,7 +131,7 @@ async function main() {
   const first = st.state.game.items[0].id;
 
   console.log('claims race');
-  guest.send({ type: 'claim', itemId: first });
+  const claimSeq = guest.send({ type: 'claim', itemId: first });
   st = await guest.until((m) => m.type === 'state' && m.state.game.claims[first], 'guest claim lands');
   assert(st.state.game.claims[first].playerId === st.you, 'guest owns the claim');
   host.send({ type: 'claim', itemId: first });
@@ -143,6 +146,10 @@ async function main() {
   await guest2.open();
   st = await guest2.until((m) => m.type === 'state', 'state restored on reconnect');
   assert(st.state.game.claims[first] && st.state.players[1].connected === true, 'claims and connection restored');
+  guest2.raw({ type: 'join', name: 'Kid', session, seq: 0 });
+  guest2.raw({ type: 'claim', itemId: first, seq: claimSeq });
+  const resent = await guest2.until((m) => m.type === 'error' || m.ack === claimSeq, 'resent claim');
+  assert(resent.type === 'state', `a resent claim the room already applied is acked, not rejected (${resent.message ?? 'ok'})`);
 
   console.log('host closes');
   host.send({ type: 'close' });
