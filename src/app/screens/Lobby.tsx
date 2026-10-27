@@ -59,7 +59,7 @@ export function Lobby() {
       <div className="center">
         <QrCode text={link} />
       </div>
-      <p className="muted small center" style={{ overflowWrap: 'anywhere' }}>
+      <p className="muted small center break-anywhere">
         {link}
       </p>
       <button className="btn btn-outline" onClick={() => void share()}>
@@ -88,7 +88,7 @@ export function Lobby() {
         {isHost && (
           <>
             <br />
-            <button className="btn btn-ghost btn-auto" style={{ paddingLeft: 0 }} onClick={() => setEditing(true)}>
+            <button className="btn btn-ghost btn-auto btn-flush" onClick={() => setEditing(true)}>
               Change
             </button>
           </>

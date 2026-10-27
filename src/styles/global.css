@@ -535,6 +535,21 @@ a {
   color: var(--muted);
 }
 
+/* A line of text under a board's scoreboard. */
+.board-note {
+  margin: 8px 16px 0;
+}
+
+/* Long unbroken text such as a link. */
+.break-anywhere {
+  overflow-wrap: anywhere;
+}
+
+/* A text button that lines up with the text around it. */
+.btn-flush {
+  padding-left: 0;
+}
+
 /* Standings (winner screen) */
 
 .standings {

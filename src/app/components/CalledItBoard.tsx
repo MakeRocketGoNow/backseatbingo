@@ -109,7 +109,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
     >
       {headerExtra}
       <Scoreboard standings={standings} />
-      <p className="muted small center" style={{ margin: '8px 16px 0' }}>
+      <p className="muted small center board-note">
         {playing ? `${remaining} left · tap what you see` : 'Game over'}
       </p>
       <div className="chip-grid">

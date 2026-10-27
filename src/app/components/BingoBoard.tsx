@@ -76,7 +76,7 @@ export function BingoBoard({ game, you, onToggle, onBingo, onEnd, headerExtra, h
     >
       {headerExtra}
       <Scoreboard standings={standings} badges={badges} />
-      <p className="pattern-note" style={{ margin: '8px 16px 0' }}>
+      <p className="pattern-note board-note">
         Pattern: {BINGO_PATTERN_LABELS[game.pattern]}
       </p>
       {visible.length > 1 && (
