@@ -87,10 +87,12 @@ export function useInstallOffer(): { offer: InstallOffer; dismiss: () => void } 
       offer: {
         kind: 'prompt',
         install: async () => {
-          await event.prompt();
-          const { outcome } = await event.userChoice;
+          // An event prompts once; clear it first so a second tap finds no
+          // button rather than a `prompt()` that rejects.
           deferred = null;
           notify();
+          await event.prompt();
+          const { outcome } = await event.userChoice;
           if (outcome === 'dismissed') dismiss();
         },
       },
