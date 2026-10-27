@@ -111,26 +111,23 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      # No checkout and no install: deleting a Worker needs only wrangler and
-      # the name, and the PR's branch may be gone by now. Depending on a
-      # checkout would also tie the teardown to the base branch's toolchain,
-      # which is how the first one failed on an install error main had not
-      # yet been fixed for.
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-
-      # `--force` also drops the Worker's Durable Objects, which is the point:
-      # a closed PR's rooms have nothing to live for. Error 10007 is "no such
-      # Worker", which a PR that never deployed a preview is allowed to hit.
+      # One API call, no checkout, no install, no wrangler. The PR's branch may
+      # be gone by now, and wrangler's own `delete` also lists KV namespaces to
+      # tidy up, which needs a KV permission the deploy token does not have and
+      # this app never will. `force=true` deletes the Worker's Durable Object
+      # namespaces with it, which is the point: a closed PR's rooms have
+      # nothing to live for. Error 10007 is "no such Worker", which a PR that
+      # never deployed a preview is allowed to hit.
       - run: |
-          status=0
-          output="$(npx --yes wrangler@4 delete "$WORKER_NAME" --force 2>&1)" || status=$?
-          printf '%s\n' "$output"
-          if [ "$status" -ne 0 ]; then
-            if printf '%s\n' "$output" | grep -q 'code: 10007'; then
-              echo "::notice::No Worker named $WORKER_NAME. This PR never deployed a preview."
-              exit 0
-            fi
-            exit "$status"
+          code="$(curl -sS -o "$RUNNER_TEMP/delete.json" -w '%{http_code}' -X DELETE \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME?force=true" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")"
+          if [ "$code" = 200 ]; then
+            echo "Deleted $WORKER_NAME and its Durable Objects."
+          elif jq -e '.errors[]? | select(.code == 10007)' "$RUNNER_TEMP/delete.json" >/dev/null 2>&1; then
+            echo "::notice::No Worker named $WORKER_NAME. This PR never deployed a preview."
+          else
+            echo "::error::Deleting $WORKER_NAME failed with HTTP $code."
+            cat "$RUNNER_TEMP/delete.json"
+            exit 1
           fi
