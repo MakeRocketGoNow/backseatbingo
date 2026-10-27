@@ -37,6 +37,12 @@ function newPlayerId(): string {
 export class RoomDO extends DurableObject<Env> {
   private cache: Stored | null | undefined;
 
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Client heartbeats are answered by the runtime without waking the room.
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+  }
+
   private async load(): Promise<Stored | null> {
     if (this.cache === undefined) {
       this.cache = (await this.ctx.storage.get<Stored>(STORAGE_KEY)) ?? null;

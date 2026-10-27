@@ -11,6 +11,7 @@ class FakeSocket {
 
   readyState = FakeSocket.CONNECTING;
   sent: ClientMessage[] = [];
+  pings = 0;
   onopen: (() => void) | null = null;
   onmessage: ((e: { data: string }) => void) | null = null;
   onclose: ((e: { code: number }) => void) | null = null;
@@ -21,7 +22,8 @@ class FakeSocket {
   }
 
   send(data: string): void {
-    this.sent.push(JSON.parse(data) as ClientMessage);
+    if (data === 'ping') this.pings += 1;
+    else this.sent.push(JSON.parse(data) as ClientMessage);
   }
 
   close(): void {
@@ -33,8 +35,8 @@ class FakeSocket {
     this.onopen?.();
   }
 
-  receive(msg: ServerMessage): void {
-    this.onmessage?.({ data: JSON.stringify(msg) });
+  receive(msg: ServerMessage | 'pong'): void {
+    this.onmessage?.({ data: msg === 'pong' ? msg : JSON.stringify(msg) });
   }
 
   drop(code = 1006): void {
@@ -172,6 +174,35 @@ describe('RoomConnection across rounds', () => {
     vi.runOnlyPendingTimers();
     last().open();
     expect(last().sent.map((m) => m.type)).toEqual(['join']);
+  });
+});
+
+describe('RoomConnection heartbeat', () => {
+  it('pings a quiet socket and keeps it while it answers', () => {
+    const conn = connected();
+    vi.advanceTimersByTime(20_000);
+    expect(last().pings).toBe(1);
+    last().receive('pong');
+    vi.advanceTimersByTime(10_000);
+    expect(FakeSocket.all).toHaveLength(1);
+    expect(conn.getSnapshot().connection).toBe('open');
+  });
+
+  it('abandons a socket that stops answering and reconnects', () => {
+    const conn = connected();
+    vi.advanceTimersByTime(25_000);
+    expect(conn.getSnapshot().connection).toBe('reconnecting');
+    vi.runOnlyPendingTimers();
+    expect(FakeSocket.all).toHaveLength(2);
+  });
+
+  it('gives up on a socket stuck connecting', () => {
+    const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast: vi.fn() });
+    conn.start();
+    vi.advanceTimersByTime(10_000);
+    expect(conn.getSnapshot().connection).toBe('reconnecting');
+    vi.runOnlyPendingTimers();
+    expect(FakeSocket.all).toHaveLength(2);
   });
 });
 

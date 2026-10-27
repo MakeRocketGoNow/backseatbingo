@@ -25,7 +25,7 @@ function connect(code, tok) {
   const inbox = [];
   const waiters = [];
   ws.addEventListener('message', (e) => {
-    const msg = JSON.parse(e.data);
+    const msg = e.data === 'pong' ? 'pong' : JSON.parse(e.data);
     const w = waiters.shift();
     if (w) w(msg);
     else inbox.push(msg);
@@ -146,6 +146,9 @@ async function main() {
   await guest2.open();
   st = await guest2.until((m) => m.type === 'state', 'state restored on reconnect');
   assert(st.state.game.claims[first] && st.state.players[1].connected === true, 'claims and connection restored');
+  guest2.ws.send('ping');
+  const pong = await guest2.until((m) => m === 'pong', 'pong');
+  assert(pong === 'pong', 'the room answers a heartbeat ping');
   guest2.raw({ type: 'join', name: 'Kid', session, seq: 0 });
   guest2.raw({ type: 'claim', itemId: first, seq: claimSeq });
   const resent = await guest2.until((m) => m.type === 'error' || m.ack === claimSeq, 'resent claim');

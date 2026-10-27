@@ -32,6 +32,11 @@ export interface RoomSnapshot {
 /** Actions safe to replay locally. Round and membership changes wait for the server. */
 const REPLAYABLE = new Set<ClientAction['type']>(['claim', 'unclaim', 'reassign', 'approve', 'mark', 'unmark', 'bingo']);
 const MAX_BACKOFF_MS = 15_000;
+// A socket can go half-open after a cell handover: no error, no close, just
+// silence. Ping after a quiet spell and give up on the socket if nothing answers.
+const PING_AFTER_QUIET_MS = 20_000;
+const PONG_TIMEOUT_MS = 5_000;
+const CONNECT_TIMEOUT_MS = 10_000;
 
 interface Callbacks {
   onToast: (message: string) => void;
@@ -45,6 +50,8 @@ export class RoomConnection {
   private pending: ClientMessage[] = [];
   private attempt = 0;
   private timer: number | undefined;
+  /** Pings after a quiet spell, or abandons a socket that stopped answering. */
+  private heartbeat: number | undefined;
   private stopped = false;
   private server: RoomState | null = null;
   private you: string | null = null;
@@ -72,6 +79,7 @@ export class RoomConnection {
   stop(): void {
     this.stopped = true;
     window.clearTimeout(this.timer);
+    window.clearTimeout(this.heartbeat);
     window.removeEventListener('online', this.wake);
     document.removeEventListener('visibilitychange', this.wake);
     const ws = this.ws;
@@ -101,7 +109,12 @@ export class RoomConnection {
   }
 
   private wake = (): void => {
-    if (this.stopped || this.ws || document.visibilityState === 'hidden') return;
+    if (this.stopped || document.visibilityState === 'hidden') return;
+    if (this.ws) {
+      // Coming back to the tab: check now that the socket still works.
+      if (this.ws.readyState === WebSocket.OPEN) this.ping(this.ws);
+      return;
+    }
     window.clearTimeout(this.timer);
     this.attempt = 0;
     this.connect();
@@ -112,9 +125,11 @@ export class RoomConnection {
     this.publish({ connection: this.attempt === 0 && !this.server ? 'connecting' : 'reconnecting' });
     const ws = new WebSocket(roomSocketUrl(this.code, this.token));
     this.ws = ws;
+    this.watch(ws, CONNECT_TIMEOUT_MS);
     ws.onopen = () => {
       if (this.ws !== ws) return;
       this.attempt = 0;
+      this.quietPing(ws);
       this.publish({ connection: 'open' });
       // A known token makes this a reconnect; the server ignores the name then.
       // The join takes seq 0, below every queued tap, so its ack cannot drop
@@ -124,6 +139,8 @@ export class RoomConnection {
     };
     ws.onmessage = (e: MessageEvent<string>) => {
       if (this.ws !== ws) return;
+      this.quietPing(ws);
+      if (e.data === 'pong') return;
       let msg: ServerMessage;
       try {
         msg = JSON.parse(e.data) as ServerMessage;
@@ -135,6 +152,7 @@ export class RoomConnection {
     ws.onclose = (e: CloseEvent) => {
       if (this.ws !== ws) return;
       this.ws = null;
+      window.clearTimeout(this.heartbeat);
       if (this.stopped) return;
       if (e.code === CLOSE_ROOM_CLOSED) return this.publish({ connection: 'closed', closeReason: 'host-closed' });
       if (e.code === CLOSE_LEFT) return this.publish({ connection: 'closed', closeReason: 'left' });
@@ -144,6 +162,33 @@ export class RoomConnection {
     ws.onerror = () => {
       // onclose follows and handles the retry
     };
+  }
+
+  /** Ping once the socket has been quiet for a while. Any message resets this. */
+  private quietPing(ws: WebSocket): void {
+    window.clearTimeout(this.heartbeat);
+    this.heartbeat = window.setTimeout(() => this.ping(ws), PING_AFTER_QUIET_MS);
+  }
+
+  private ping(ws: WebSocket): void {
+    try {
+      ws.send('ping');
+    } catch {
+      // onclose follows
+    }
+    this.watch(ws, PONG_TIMEOUT_MS);
+  }
+
+  /** Abandon `ws` and reconnect unless something arrives (or it opens) within `ms`. */
+  private watch(ws: WebSocket, ms: number): void {
+    window.clearTimeout(this.heartbeat);
+    this.heartbeat = window.setTimeout(() => {
+      if (this.ws !== ws) return;
+      // A half-open socket may take minutes to report its close; stop waiting for it.
+      this.ws = null;
+      ws.close();
+      this.scheduleReconnect();
+    }, ms);
   }
 
   private scheduleReconnect(): void {
