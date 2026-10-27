@@ -26,7 +26,7 @@ pnpm build                     # typecheck + Vite production build
 node scripts/smoke-room.mjs    # end-to-end room flow against pnpm api
 ```
 
-CI runs the tests and the build (which includes the typecheck) on every pull request and on pushes to `main`; deploys stay manual.
+CI runs the tests and the build (which includes the typecheck) on every pull request and on pushes to `main`.
 
 ## Progressive web app
 
@@ -37,6 +37,10 @@ The Vite dev server never registers the worker. To try it, build and open the Wo
 The winner screen's tip line reads its link from `VITE_TIP_URL`. `.env` holds a placeholder; put the real link in `.env.local`, which is gitignored. An empty value hides the line.
 
 ## Deploy
+
+Every push to `main` that passes the checks deploys from the same workflow. It needs two repository secrets, `CLOUDFLARE_API_TOKEN` (an API token with the Workers Scripts edit permission) and `CLOUDFLARE_ACCOUNT_ID`, and reads the tip link from an optional `VITE_TIP_URL` secret; with that one unset the tip line is hidden rather than built with the placeholder. The job uses the `production` environment, so protection rules such as a required reviewer can be added there.
+
+To deploy by hand instead:
 
 ```bash
 pnpm exec wrangler login       # once

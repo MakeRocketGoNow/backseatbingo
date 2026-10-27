@@ -5,10 +5,11 @@ on:
   push:
     branches: [main]
 
-# A newer push to the same branch or PR makes the older run moot.
+# A newer push to the same PR makes the older run moot. Runs on main queue
+# instead, so a deploy in progress is never cancelled halfway.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -36,3 +37,36 @@ jobs:
 
       # The build script runs typecheck first, so this covers both.
       - run: pnpm build
+
+  # Every push to main that passes the checks goes live. Needs two repository
+  # secrets, CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; the job fails at
+  # the deploy step until they exist. VITE_TIP_URL is optional: unset, the
+  # winner screen's tip line is hidden rather than built with the placeholder.
+  deploy:
+    name: Deploy to Cloudflare
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+        env:
+          VITE_TIP_URL: ${{ secrets.VITE_TIP_URL }}
+
+      - run: pnpm exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
