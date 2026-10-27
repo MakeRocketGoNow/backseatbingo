@@ -135,7 +135,7 @@ export class RoomDO extends DurableObject<Env> {
     if (token.length < 16 || token.length > 64) return new Response('Bad token.', { status: 400 });
     // Anyone with the code can open a socket. Players always get in; strangers
     // who have not joined are capped so they cannot pile up sockets on the room.
-    if (!stored.tokens[token] && this.unjoinedSockets(stored) >= MAX_UNJOINED_SOCKETS) {
+    if (!isMember(stored, token) && this.unjoinedSockets(stored) >= MAX_UNJOINED_SOCKETS) {
       return new Response('Too many connections.', { status: 429 });
     }
 
@@ -151,7 +151,7 @@ export class RoomDO extends DurableObject<Env> {
   private unjoinedSockets(stored: Stored): number {
     return this.ctx.getWebSockets().filter((ws) => {
       const att = ws.deserializeAttachment() as Attachment | null;
-      return !att || !stored.tokens[att.token];
+      return !att || !isMember(stored, att.token);
     }).length;
   }
 
@@ -238,11 +238,12 @@ export class RoomDO extends DurableObject<Env> {
       });
       return;
     }
-    const next: Stored = {
+    let next: Stored = {
       ...stored,
       room: result.room,
       applied: att.session ? { ...stored.applied, [att.token]: { session: att.session, seq: msg.seq } } : stored.applied,
     };
+    if (msg.type === 'leave') next = forgetLeaver(next, att.token, playerId);
     await this.save(next);
     this.broadcast(next, ws, msg.seq);
 
@@ -287,6 +288,24 @@ export class RoomDO extends DurableObject<Env> {
   override async alarm(): Promise<void> {
     await this.destroy();
   }
+}
+
+/** In the room now, not just known: a guest who left keeps a token mapping until it is forgotten. */
+function isMember(stored: Stored, token: string): boolean {
+  const id = stored.tokens[token];
+  return !!id && !!findPlayer(stored.room, id);
+}
+
+/**
+ * Drop a departed guest's token, so join-and-leave loops cannot grow the
+ * stored room without limit. Kept while the current game still lists them, so
+ * rejoining mid-game gets their card or claims back.
+ */
+function forgetLeaver(stored: Stored, token: string, playerId: string): Stored {
+  if (stored.room.game?.players.some((p) => p.id === playerId)) return stored;
+  const { [token]: _id, ...tokens } = stored.tokens;
+  const { [token]: _applied, ...applied } = stored.applied ?? {};
+  return { ...stored, tokens, applied };
 }
 
 const WIRE_CODES: ReadonlySet<string> = new Set<RoomErrorCode>([
