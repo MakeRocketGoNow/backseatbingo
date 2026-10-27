@@ -56,6 +56,12 @@ export type RoomErrorCode =
 
 // Server to client.
 
+/** WebSocket close codes the server uses to end a connection for good. */
+export const CLOSE_ROOM_CLOSED = 4000;
+export const CLOSE_LEFT = 4001;
+/** No room with that code: it never existed, expired, or closed while this device was away. */
+export const CLOSE_NOT_FOUND = 4002;
+
 export type ServerMessage =
   | { type: 'state'; state: RoomState; you: string; ack?: number }
   | { type: 'error'; code: RoomErrorCode; message: string; seq?: number }

@@ -7,7 +7,7 @@ import { Page } from '@app/components/Page';
 import { Sheet } from '@app/components/Sheet';
 import { WinnerView } from '@app/components/WinnerView';
 import { useDisplayName } from '@app/store/identity';
-import { RoomProvider, useRoom } from '@app/store/room';
+import { RoomProvider, useRoom, type CloseReason } from '@app/store/room';
 import { Lobby, SettingsSheet } from './Lobby';
 
 export function RoomRoute({ code }: { code: string }) {
@@ -161,14 +161,24 @@ export function LeaveButton({ full }: { full?: boolean }) {
   );
 }
 
-function Closed({ reason, youAreHost }: { reason: 'host-closed' | 'left'; youAreHost: boolean }) {
+function Closed({ reason, youAreHost }: { reason: NonNullable<CloseReason>; youAreHost: boolean }) {
   const navigate = useNavigate();
-  const headline = reason === 'left' ? 'You left the trip' : youAreHost ? 'Trip closed' : 'The host ended the trip';
+  const { code } = useRoom();
+  const headline =
+    reason === 'left'
+      ? 'You left the trip'
+      : reason === 'not-found'
+        ? `Trip ${code} has ended`
+        : youAreHost
+          ? 'Trip closed'
+          : 'The host ended the trip';
   return (
     <Page title={reason === 'left' ? 'You left' : 'Trip over'}>
       <div className="hero">
         <h2 className="hero-title">{headline}</h2>
-        <p className="hero-sub">{youAreHost ? 'The code no longer works.' : 'Thanks for playing.'}</p>
+        <p className="hero-sub">
+          {youAreHost || reason === 'not-found' ? 'The code no longer works.' : 'Thanks for playing.'}
+        </p>
       </div>
       <div className="btn-stack">
         <button className="btn btn-primary btn-big" onClick={() => void navigate({ to: '/', replace: true })}>

@@ -1,6 +1,8 @@
 import type { CreateRoomRequest, CreateRoomResponse } from '../shared/protocol';
+import { CLOSE_NOT_FOUND } from '../shared/protocol';
 import type { Pack, RoomSettings } from '../shared/types';
 import { generateRoomCode, isValidRoomCode } from '../game/codes';
+import { closedSocket } from './closed-socket';
 import type { Env } from './env';
 import { RoomDO } from './room-do';
 
@@ -114,14 +116,16 @@ export default {
     const match = /^\/api\/rooms\/([A-Za-z]{4})(\/ws)?$/.exec(url.pathname);
     if (match) {
       const code = match[1]!.toUpperCase();
-      if (!isValidRoomCode(code)) return json({ error: 'No such trip.' }, 404);
-      const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
+      const stub = isValidRoomCode(code) ? env.ROOMS.get(env.ROOMS.idFromName(code)) : null;
       if (match[2]) {
         if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
           return json({ error: 'Expected a WebSocket upgrade.' }, 426);
         }
+        // A socket the browser can read the close code of, not a failed handshake it would retry.
+        if (!stub) return closedSocket(CLOSE_NOT_FOUND, 'No such trip.');
         return stub.fetch(new Request(`https://room/ws${url.search}`, request));
       }
+      if (!stub) return json({ error: 'No such trip.' }, 404);
       if (request.method === 'GET') return stub.fetch('https://room/info');
     }
     if (url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, 404);

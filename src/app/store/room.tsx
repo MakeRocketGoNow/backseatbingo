@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import type { ClientAction, ClientMessage, ServerMessage } from '@shared/protocol';
+import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED } from '@shared/protocol';
 import type { RoomState } from '@shared/types';
 import { applyAction } from '@game/index';
 import { roomSocketUrl } from '@app/api';
@@ -15,7 +16,8 @@ import { getPlayerToken } from './identity';
  */
 
 export type ConnectionStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
-export type CloseReason = 'host-closed' | 'left' | null;
+/** `not-found`: the room was gone when this device connected (closed while it was away, or expired). */
+export type CloseReason = 'host-closed' | 'left' | 'not-found' | null;
 
 export interface RoomSnapshot {
   connection: ConnectionStatus;
@@ -30,8 +32,6 @@ export interface RoomSnapshot {
 /** Actions safe to replay locally. Round and membership changes wait for the server. */
 const REPLAYABLE = new Set<ClientAction['type']>(['claim', 'unclaim', 'reassign', 'approve', 'mark', 'unmark', 'bingo']);
 const MAX_BACKOFF_MS = 15_000;
-const CLOSE_HOST_CLOSED = 4000;
-const CLOSE_LEFT = 4001;
 
 interface Callbacks {
   onToast: (message: string) => void;
@@ -127,8 +127,9 @@ export class RoomConnection {
       if (this.ws !== ws) return;
       this.ws = null;
       if (this.stopped) return;
-      if (e.code === CLOSE_HOST_CLOSED) return this.publish({ connection: 'closed', closeReason: 'host-closed' });
+      if (e.code === CLOSE_ROOM_CLOSED) return this.publish({ connection: 'closed', closeReason: 'host-closed' });
       if (e.code === CLOSE_LEFT) return this.publish({ connection: 'closed', closeReason: 'left' });
+      if (e.code === CLOSE_NOT_FOUND) return this.publish({ connection: 'closed', closeReason: 'not-found' });
       this.scheduleReconnect();
     };
     ws.onerror = () => {

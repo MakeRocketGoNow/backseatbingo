@@ -1,8 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { ClientMessage, CreateRoomRequest, RoomErrorCode, RoomInfoResponse, ServerMessage } from '../shared/protocol';
-import { isClientMessage } from '../shared/protocol';
+import { CLOSE_LEFT, CLOSE_NOT_FOUND, CLOSE_ROOM_CLOSED, isClientMessage } from '../shared/protocol';
 import type { RoomState } from '../shared/types';
 import { applyAction, createRoom, joinRoom, setConnected } from '../game/room';
+import { closedSocket } from './closed-socket';
 import type { Env } from './env';
 
 /**
@@ -14,8 +15,6 @@ import type { Env } from './env';
 
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 const STORAGE_KEY = 'room';
-const CLOSE_CODE_ROOM_CLOSED = 4000;
-const CLOSE_CODE_LEFT = 4001;
 
 interface Stored {
   room: RoomState;
@@ -51,7 +50,7 @@ export class RoomDO extends DurableObject<Env> {
     this.cache = null;
     for (const ws of this.ctx.getWebSockets()) {
       try {
-        ws.close(CLOSE_CODE_ROOM_CLOSED, 'Room closed');
+        ws.close(CLOSE_ROOM_CLOSED, 'Room closed');
       } catch {
         // already closed
       }
@@ -109,7 +108,7 @@ export class RoomDO extends DurableObject<Env> {
 
   private async handleUpgrade(url: URL): Promise<Response> {
     const stored = await this.load();
-    if (!stored || stored.room.status === 'closed') return new Response('No such trip.', { status: 404 });
+    if (!stored || stored.room.status === 'closed') return closedSocket(CLOSE_NOT_FOUND, 'No such trip.');
     const token = url.searchParams.get('token') ?? '';
     if (token.length < 16 || token.length > 64) return new Response('Bad token.', { status: 400 });
 
@@ -217,7 +216,7 @@ export class RoomDO extends DurableObject<Env> {
     }
     if (msg.type === 'leave') {
       try {
-        ws.close(CLOSE_CODE_LEFT, 'Left');
+        ws.close(CLOSE_LEFT, 'Left');
       } catch {
         // ignore
       }

@@ -155,3 +155,23 @@ describe('RoomConnection', () => {
     expect(last().sent.some((m) => m.type === 'claim' && m.seq === replay!.seq)).toBe(true);
   });
 });
+
+describe('RoomConnection when the room is gone', () => {
+  it('stops retrying when the server says the room does not exist', () => {
+    const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast: vi.fn() });
+    conn.start();
+    last().drop(4002);
+    expect(conn.getSnapshot()).toMatchObject({ connection: 'closed', closeReason: 'not-found' });
+    vi.runAllTimers();
+    expect(FakeSocket.all).toHaveLength(1);
+  });
+
+  it('keeps retrying when the socket just drops', () => {
+    const conn = new RoomConnection('BCDF', 'token-token-token-1', 'Kid', { onToast: vi.fn() });
+    conn.start();
+    last().drop();
+    expect(conn.getSnapshot().connection).toBe('reconnecting');
+    vi.runOnlyPendingTimers();
+    expect(FakeSocket.all).toHaveLength(2);
+  });
+});
