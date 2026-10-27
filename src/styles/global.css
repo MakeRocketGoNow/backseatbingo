@@ -654,6 +654,21 @@ a {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
 }
 
+.toast-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.toast-action > span {
+  flex: 1;
+}
+
+.toast-action .btn-ghost {
+  color: var(--bg);
+}
+
 /* Lists */
 
 .list {
