@@ -63,8 +63,9 @@ jobs:
         env:
           VITE_TIP_URL: ${{ secrets.VITE_TIP_URL }}
 
-      # `--name` points the deploy at the preview's own Worker. With no routes
-      # in the config, the workers.dev address is the Worker's only one.
+      # `--name` points the deploy at the preview's own Worker. The env has no
+      # routes whatever production has, so the workers.dev address is the
+      # Worker's only one.
       - run: pnpm exec wrangler deploy --env preview --name "$WORKER_NAME"
 
       - name: Comment the preview URL

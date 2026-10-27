@@ -33,7 +33,10 @@
     // Rate-limit namespaces are account-wide, so previews get ids of their
     // own rather than spending production's per-IP budget. An env does not
     // inherit Durable Objects, migrations or rate limits, hence the repeats.
+    // It does inherit routes, so `routes` is emptied here: when production
+    // gets a domain, a preview must not claim it.
     "preview": {
+      "routes": [],
       "durable_objects": {
         "bindings": [{ "name": "ROOMS", "class_name": "RoomDO" }]
       },
