@@ -62,6 +62,8 @@ The service worker is hand-written (`sw/`) and emitted by a small Vite plugin ra
 
 ## Decisions log
 
+- **2026-10-26, deploys.** Every green push to `main` goes live; there is no release step. Same-repository PRs get a throwaway preview Worker with its own rooms and rate limits, deleted when the PR closes. Production's tip link comes from a CI secret, and the tip line stays hidden until that secret is set.
+
 - **2026-10-26, Phase 3 scope.** No PWA plugin; the worker is a few lines and the plugin that emits it is smaller than the configuration one would need. Updates never interrupt a game. The tip link is a build-time variable with a placeholder in the repo, so the public source never carries the real link, and the same mechanism hides the line in the iOS build.
 
 - **2026-10-26, Phase 2 scope.** No renaming mid-game. Host approvals ship in Phase 2 with "auto" as the default.
