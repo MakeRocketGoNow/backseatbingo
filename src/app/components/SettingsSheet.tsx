@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Pack } from '@shared/types';
 import { usePacks } from '@app/store/packs';
 import { SettingsForm, type GameSettings } from './SettingsForm';
@@ -16,8 +16,7 @@ interface SettingsSheetProps {
 /** Host changes settings (lobby) or picks the next round (winner). The host's local packs are offered alongside the room's. */
 export function SettingsSheet({ open, onClose, roomPack, initial, submitLabel, onSubmit }: SettingsSheetProps) {
   const { packs, isLoading } = usePacks();
-  const [value, setValueState] = useState<GameSettings>(initial);
-  const setValue = useCallback((next: GameSettings) => setValueState(next), []);
+  const [value, setValue] = useState<GameSettings>(initial);
   const options = useMemo(() => (packs.some((p) => p.id === roomPack.id) ? packs : [roomPack, ...packs]), [packs, roomPack]);
   const chosen = options.find((p) => p.id === value.packId);
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import type { Player } from '@shared/types';
 import { MAX_NAME_LENGTH, MODE_LABELS } from '@shared/types';
@@ -19,14 +19,13 @@ export function Setup() {
   const { packs, isLoading } = usePacks();
   const [last, setLast] = useLastSetup();
 
-  const [settings, setSettingsState] = useState<GameSettings>({
+  const [settings, setSettings] = useState<GameSettings>({
     packId: last.packId,
     mode: last.mode,
     listLength: last.listLength,
     pattern: last.pattern,
     approvals: 'auto',
   });
-  const setSettings = useCallback((next: GameSettings) => setSettingsState(next), []);
   const [names, setNames] = useState<string[]>(last.playerNames.length ? last.playerNames : ['Player 1']);
 
   const pack = useMemo(() => packs.find((p) => p.id === settings.packId), [packs, settings.packId]);

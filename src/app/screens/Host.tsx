@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
 import { MAX_NAME_LENGTH } from '@shared/types';
@@ -18,14 +18,13 @@ export function Host() {
   const { packs, isLoading } = usePacks();
   const [last, setLast] = useLastSetup();
   const [name, setName] = useDisplayName();
-  const [settings, setSettingsState] = useState<GameSettings>({
+  const [settings, setSettings] = useState<GameSettings>({
     packId: last.packId,
     mode: last.mode,
     listLength: last.listLength,
     pattern: last.pattern,
     approvals: last.approvals ?? 'auto',
   });
-  const setSettings = useCallback((next: GameSettings) => setSettingsState(next), []);
 
   const pack = useMemo(() => packs.find((p) => p.id === settings.packId), [packs, settings.packId]);
   const create = useMutation({
