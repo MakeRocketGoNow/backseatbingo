@@ -1,0 +1,15 @@
+name: Setup
+description: pnpm, Node and the locked dependencies, shared by every job that builds.
+runs:
+  using: composite
+  steps:
+    # Reads the version from package.json's packageManager field.
+    - uses: pnpm/action-setup@v6
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - run: pnpm install --frozen-lockfile
+      shell: bash
