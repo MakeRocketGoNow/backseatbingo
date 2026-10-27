@@ -61,7 +61,8 @@ export function registerServiceWorker(onUpdate: (apply: () => void) => void): vo
 export async function updateApp(): Promise<void> {
   const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
   if (reg) await reg.update().catch(() => undefined);
-  const worker = reg?.waiting ?? reg?.installing;
+  // The installing worker is the newest build; a waiting one may be a deploy behind it.
+  const worker = reg?.installing ?? reg?.waiting;
   if (!worker) {
     location.reload();
     return;
