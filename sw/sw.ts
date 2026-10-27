@@ -17,7 +17,11 @@ const SHELL = '/';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(__CACHE_NAME__).then((cache) => cache.addAll([SHELL, ...__PRECACHE__])),
+    // `reload` skips the HTTP cache: a stale `/` there would point at the
+    // previous build's assets, which `activate` is about to delete.
+    caches
+      .open(__CACHE_NAME__)
+      .then((cache) => cache.addAll([SHELL, ...__PRECACHE__].map((url) => new Request(url, { cache: 'reload' })))),
     // No skipWaiting: the page that is open keeps the assets it was built
     // with. The client offers a reload and sends `skip-waiting` on tap.
   );
