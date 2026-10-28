@@ -2,6 +2,8 @@
 // `node scripts/smoke-room.mjs`. Uses Node's built-in fetch and WebSocket.
 
 const BASE = process.env.BASE ?? 'http://localhost:8787';
+// The client's protocol version, sent on the socket URL; keep in step with `PROTOCOL_VERSION` in shared/protocol.ts.
+const PROTOCOL_VERSION = 2;
 const WS_BASE = BASE.replace(/^http/, 'ws');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -21,7 +23,7 @@ async function waitForServer() {
 }
 
 function connect(code, tok) {
-  const ws = new WebSocket(`${WS_BASE}/api/rooms/${code}/ws?token=${tok}`);
+  const ws = new WebSocket(`${WS_BASE}/api/rooms/${code}/ws?token=${tok}&v=${PROTOCOL_VERSION}`);
   const inbox = [];
   const waiters = [];
   ws.addEventListener('message', (e) => {
@@ -133,11 +135,15 @@ async function main() {
 
   console.log('claims race');
   const claimSeq = guest.send({ type: 'claim', itemId: first });
-  st = await guest.until((m) => m.type === 'state' && m.state.game.claims[first], 'guest claim lands');
-  assert(st.state.game.claims[first].playerId === st.you, 'guest owns the claim');
+  st = await guest.until((m) => m.type === 'state' && m.state.game.claims[first]?.length, 'guest claim lands');
+  assert(st.state.game.claims[first][0].playerId === st.you, 'guest owns the claim');
   host.send({ type: 'claim', itemId: first });
   const lost = await host.until((m) => m.type === 'error', 'host loses race');
-  assert(lost.code === 'rejected' && lost.message === 'Kid got it', `loser toast says who got it (${lost.message})`);
+  assert(lost.code === 'rejected' && lost.message === 'Kid just called it', `loser toast says who called it (${lost.message})`);
+  const second = st.state.game.items[1].id;
+  host.send({ type: 'claim', itemId: second });
+  st = await host.until((m) => m.type === 'state' && m.state.game.claims[second]?.length, 'host claim lands');
+  assert(st.state.game.claims[second][0].playerId === st.you, 'host owns a claim on another item');
 
   console.log('guest reconnects');
   guest.ws.close();
@@ -147,7 +153,7 @@ async function main() {
   await guest2.open();
   guest2.send({ type: 'join', name: 'Kid' });
   st = await guest2.until((m) => m.type === 'state', 'state restored on reconnect');
-  assert(st.state.game.claims[first] && st.state.players[1].connected === true, 'claims and connection restored');
+  assert(st.state.game.claims[first]?.length && st.state.players[1].connected === true, 'claims and connection restored');
   guest2.ws.send('ping');
   const pong = await guest2.until((m) => m === 'pong', 'pong');
   assert(pong === 'pong', 'the room answers a heartbeat ping');

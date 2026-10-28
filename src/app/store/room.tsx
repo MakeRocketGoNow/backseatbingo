@@ -266,6 +266,10 @@ export class RoomConnection {
     const base = this.server;
     const you = this.you;
     if (!base || !you) return base;
+    // Replayed taps are stamped with this device's clock on every publish, so a
+    // queued claim's time moves until the server's snapshot carries the real one.
+    // That is harmless: the claim is the viewer's own, and the claim window only
+    // ever holds other players off.
     const now = Date.now();
     return this.pending.reduce((room, m) => applyAction(room, you, m, now, Math.random).room, base);
   }

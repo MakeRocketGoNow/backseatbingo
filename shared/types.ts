@@ -56,7 +56,7 @@ export interface Player {
 }
 
 /**
- * A claim on an item in Called It. `pending` is a guest's claim waiting for
+ * One player's call on an item in Called It. `pending` is a guest's claim waiting for
  * the host under the "host approves" room setting; everything else is `claimed`.
  */
 export interface Claim {
@@ -73,7 +73,8 @@ export interface SpotItState {
   status: GameStatus;
   players: Player[];
   items: PackItem[];
-  claims: Record<string, Claim>;
+  /** Per item id, every player's call on it in the order they were made. Each player appears at most once. */
+  claims: Record<string, Claim[]>;
   endedAt?: number;
 }
 
@@ -119,7 +120,7 @@ export interface Standing {
 export type Approvals = 'auto' | 'host';
 
 export const APPROVALS_LABELS: Record<Approvals, string> = {
-  auto: 'First tap wins',
+  auto: 'Calls count right away',
   host: 'Host approves each call',
 };
 

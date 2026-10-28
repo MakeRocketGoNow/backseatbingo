@@ -12,6 +12,7 @@ import {
   createSpotItGame,
   endSpotItGame,
   reassign,
+  recentCall,
   unclaim,
   type SpotItError,
 } from './spotit';
@@ -143,10 +144,11 @@ function finishIfGameEnded(room: RoomState, now: number): RoomState {
   return room;
 }
 
-function claimerName(room: RoomState, itemId: string): string {
+/** Who called the item inside its claim window. */
+function recentCallerName(room: RoomState, itemId: string, now: number): string {
   const g = room.game;
   if (!g || g.mode !== 'spotit') return 'Someone';
-  const c = g.claims[itemId];
+  const c = recentCall(g, itemId, now);
   // The game's roster, not the room's: someone who left mid-round still holds their claims.
   return (c && g.players.find((p) => p.id === c.playerId)?.name) ?? 'Someone';
 }
@@ -230,19 +232,26 @@ export function applyAction(
         const denied = hostOnly();
         if (denied) return denied;
       }
-      if (action.type === 'reassign' && game.players.find((p) => p.id === action.playerId)?.left) {
+      if (action.type === 'reassign' && game.players.find((p) => p.id === action.to)?.left) {
         return fail(room, 'unknown-player', 'They have left the trip.');
       }
       const r =
         action.type === 'claim'
           ? claim(game, action.itemId, playerId, now, room.settings.approvals === 'host' && !host)
           : action.type === 'unclaim'
-            ? unclaim(game, action.itemId)
+            ? unclaim(game, action.itemId, action.playerId)
             : action.type === 'reassign'
-              ? reassign(game, action.itemId, action.playerId, now)
-              : approveClaim(game, action.itemId, now);
+              ? reassign(game, action.itemId, action.from, action.to, now)
+              : approveClaim(game, action.itemId, action.playerId, now);
       if (!r.ok) {
-        const message = r.error === 'already-claimed' ? `${claimerName(room, action.itemId)} got it` : 'That did not work.';
+        const message =
+          r.error === 'just-called'
+            ? `${recentCallerName(room, action.itemId, now)} just called it`
+            : r.error === 'already-claimed'
+              ? action.type === 'claim'
+                ? 'You already called that one'
+                : 'They already have that one'
+              : 'That did not work.';
         return fail(room, r.error, message);
       }
       return ok(finishIfGameEnded({ ...room, game: r.state, updatedAt: now }, now));

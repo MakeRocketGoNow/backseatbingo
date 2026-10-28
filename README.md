@@ -4,7 +4,7 @@ A free game for family car trips. Spot things out the window, call them first.
 
 Two modes:
 
-- **Called It**: one shared list, the first person to tap an item claims it. Most claims wins.
+- **Called It**: one shared list, everyone crosses off what they spot. One call per sighting; first to finish the list, or most items when the host ends it, wins.
 - **Bingo**: everyone gets a random 5x5 card. First to complete the pattern wins.
 
 Play on one phone (named players pass it around) or start a trip: the host gets a 4-letter code and a QR link, everyone else joins from their own phone in any browser. See [docs/DESIGN.md](docs/DESIGN.md) for the design notes and decisions log.

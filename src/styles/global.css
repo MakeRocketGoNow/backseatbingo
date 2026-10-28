@@ -792,6 +792,24 @@ a {
   color: var(--pending);
 }
 
+/* Inside another player's claim window: that sighting is theirs, the next one is open. */
+.chip-window {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+.chip-window .chip-claimer {
+  color: var(--accent);
+}
+
+/* One player's call in the host's item sheet: name, then OK / Undo / Give. */
+.claim-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  font-weight: 700;
+}
+
 /* Rooms */
 
 .conn {

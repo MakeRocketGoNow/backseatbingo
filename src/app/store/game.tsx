@@ -8,6 +8,7 @@ import {
   reassign,
   toggleMark,
   unclaim,
+  upgradeGame,
   type BingoResult,
   type Result,
 } from '@game/index';
@@ -31,7 +32,7 @@ function readGame(): GameState | null {
     const raw = localStorage.getItem(GAME_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isGameState(parsed) ? parsed : null;
+    return isGameState(parsed) ? upgradeGame(parsed) : null;
   } catch {
     return null;
   }
@@ -54,8 +55,8 @@ interface GameApi {
   start: (game: GameState) => void;
   clear: () => void;
   claim: (itemId: string, playerId: string) => Result<SpotItState>;
-  unclaim: (itemId: string) => Result<SpotItState>;
-  reassign: (itemId: string, playerId: string) => Result<SpotItState>;
+  unclaim: (itemId: string, playerId: string) => Result<SpotItState>;
+  reassign: (itemId: string, from: string, to: string) => Result<SpotItState>;
   toggleMark: (playerId: string, cell: number) => BingoResult;
   callBingo: (playerId: string) => BingoResult;
   end: () => void;
@@ -104,8 +105,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setGame(null);
       },
       claim: (itemId, playerId) => runSpotIt((s) => claim(s, itemId, playerId, Date.now())),
-      unclaim: (itemId) => runSpotIt((s) => unclaim(s, itemId)),
-      reassign: (itemId, playerId) => runSpotIt((s) => reassign(s, itemId, playerId, Date.now())),
+      unclaim: (itemId, playerId) => runSpotIt((s) => unclaim(s, itemId, playerId)),
+      reassign: (itemId, from, to) => runSpotIt((s) => reassign(s, itemId, from, to, Date.now())),
       toggleMark: (playerId, cell) => runBingo((s) => toggleMark(s, playerId, cell)),
       callBingo: (playerId) => runBingo((s) => callBingo(s, playerId, Date.now())),
       end: () => {

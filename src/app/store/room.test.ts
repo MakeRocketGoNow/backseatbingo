@@ -81,7 +81,7 @@ function room(): RoomState {
 
 function claimed(conn: RoomConnection, itemId: string): boolean {
   const g = conn.getSnapshot().room?.game;
-  return g?.mode === 'spotit' && !!g.claims[itemId];
+  return g?.mode === 'spotit' && !!g.claims[itemId]?.length;
 }
 
 beforeEach(() => {
@@ -118,7 +118,7 @@ describe('RoomConnection', () => {
     expect(claimed(conn, 'cow')).toBe(true);
     const seq = last().sent.at(-1)!.seq;
     const next = room();
-    if (next.game?.mode === 'spotit') next.game.claims['cow'] = { itemId: 'cow', playerId: 'g', at: 2, status: 'claimed' };
+    if (next.game?.mode === 'spotit') next.game.claims['cow'] = [{ itemId: 'cow', playerId: 'g', at: 2, status: 'claimed' }];
     last().receive({ type: 'state', state: next, you: 'g', ack: seq });
     expect(claimed(conn, 'cow')).toBe(true);
     // A later snapshot without the claim proves it is no longer replayed locally.
