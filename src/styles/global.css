@@ -183,6 +183,12 @@ a {
   padding: 32px 0 8px;
 }
 
+/* 26px corners at 112px come from the rect's rx in `Logo`. */
+.hero-logo {
+  display: block;
+  margin: 0 auto 16px;
+}
+
 .hero-title {
   font-size: 2.4rem;
   font-weight: 900;

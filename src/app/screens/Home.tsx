@@ -4,6 +4,7 @@ import { OFFLINE_MESSAGE } from '@app/api';
 import { useGame } from '@app/store/game';
 import { useOnline } from '@app/store/online';
 import { useSettings } from '@app/store/settings';
+import { Logo } from '@app/components/Logo';
 
 export function Home() {
   const { game, clear } = useGame();
@@ -16,6 +17,7 @@ export function Home() {
     <div className="page">
       <main className="page-body">
         <div className="hero">
+          <Logo />
           <h1 className="hero-title">Backseat Bingo</h1>
           <p className="hero-sub">Spot it out the window. Call it first.</p>
         </div>
