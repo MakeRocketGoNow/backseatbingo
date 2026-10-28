@@ -65,8 +65,8 @@ export function CalledItBoard(props: CalledItBoardProps) {
   const nameOf = (id: string): string => playerById(id)?.name ?? 'Someone';
   // People who left the trip keep their score but cannot be handed a call.
   const active = game.players.filter((p) => !p.left);
-  // On a shared phone with one name there is no one to ask.
-  const only = you ?? (active.length === 1 ? active[0]?.id : undefined) ?? null;
+  // Whose list this phone tracks: you in a room, or the one name on a shared phone. Null when a shared phone has several.
+  const self = you ?? (active.length === 1 ? active[0]?.id : undefined) ?? null;
   const uncalled = game.items.filter((i) => claimsOn(game, i.id).length === 0).length;
 
   function close() {
@@ -83,7 +83,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
     const claims = claimsOn(game, item.id);
     // The host manages calls from the sheet; on a shared phone every tap picks who called it.
     if (isHost && (claims.length > 0 || !you)) {
-      if (!you && claims.length === 0 && only) return playing ? doClaim(item, only) : undefined;
+      if (!you && claims.length === 0 && self) return playing ? doClaim(item, self) : undefined;
       setSheet({ kind: 'item', item, reassigning: null });
       return;
     }
@@ -147,7 +147,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
       {headerExtra}
       <Scoreboard standings={standings} />
       <p className="muted small center board-note">
-        {!playing ? 'Game over' : only ? `${remainingFor(game, only)} left for you · tap what you see` : 'Tap what you see'}
+        {!playing ? 'Game over' : self ? `${remainingFor(game, self)} left for you · tap what you see` : 'Tap what you see'}
       </p>
       <div className="chip-grid">
         {game.items.map((item) => {
