@@ -34,9 +34,9 @@ export type ClientAction =
   | { type: 'join'; name: string; session?: string }
   | { type: 'start' }
   | { type: 'claim'; itemId: string }
-  | { type: 'unclaim'; itemId: string }
-  | { type: 'reassign'; itemId: string; playerId: string }
-  | { type: 'approve'; itemId: string }
+  | { type: 'unclaim'; itemId: string; playerId: string }
+  | { type: 'reassign'; itemId: string; from: string; to: string }
+  | { type: 'approve'; itemId: string; playerId: string }
   | { type: 'mark'; cell: number }
   | { type: 'unmark'; cell: number }
   | { type: 'bingo' }
@@ -80,8 +80,9 @@ export const CLOSE_UPDATE_NEEDED = 4003;
 // only when the change breaks older clients: every bump of the minimum sends
 // open trips on older builds to a reload, so additive changes should not.
 
-export const PROTOCOL_VERSION = 1;
-export const MIN_PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
+// 2: Called It claims are per player, so `unclaim`, `approve` and `reassign` name the player and the room state's `claims` hold lists.
+export const MIN_PROTOCOL_VERSION = 2;
 
 /** Whether the server still speaks to a client sending `v`. No `v` is version 1, from before versions were sent. */
 export function isSupportedClient(v: string | null, min: number = MIN_PROTOCOL_VERSION): boolean {
@@ -108,11 +109,12 @@ export function isClientMessage(v: unknown): v is ClientMessage {
     case 'close':
       return true;
     case 'claim':
+      return typeof v['itemId'] === 'string';
     case 'unclaim':
     case 'approve':
-      return typeof v['itemId'] === 'string';
-    case 'reassign':
       return typeof v['itemId'] === 'string' && typeof v['playerId'] === 'string';
+    case 'reassign':
+      return typeof v['itemId'] === 'string' && typeof v['from'] === 'string' && typeof v['to'] === 'string';
     case 'mark':
     case 'unmark':
       return Number.isInteger(v['cell']) && (v['cell'] as number) >= 0 && (v['cell'] as number) < BINGO_CELLS;

@@ -21,8 +21,8 @@ export function CalledItGame() {
       you={null}
       isHost
       onClaim={(itemId, playerId) => void claim(itemId, playerId)}
-      onUnclaim={(itemId) => void unclaim(itemId)}
-      onReassign={(itemId, playerId) => void reassign(itemId, playerId)}
+      onUnclaim={(itemId, playerId) => void unclaim(itemId, playerId)}
+      onReassign={(itemId, from, to) => void reassign(itemId, from, to)}
       onEnd={end}
     />
   );

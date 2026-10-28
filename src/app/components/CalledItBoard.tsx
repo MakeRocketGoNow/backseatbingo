@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import type { PackItem, Player, SpotItState } from '@shared/types';
-import { spotItStandings } from '@game/index';
+import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
+import type { Claim, PackItem, Player, SpotItState } from '@shared/types';
+import { CLAIM_WINDOW_MS, claimBy, claimsOn, recentCall, remainingFor, spotItStandings } from '@game/index';
 import { claimFeedback } from '@app/feedback';
 import { Page } from './Page';
 import { Scoreboard } from './Scoreboard';
@@ -14,9 +14,9 @@ export interface CalledItBoardProps {
   /** Host controls: undo, reassign, approve, end. */
   isHost: boolean;
   onClaim: (itemId: string, playerId: string) => void;
-  onUnclaim: (itemId: string) => void;
-  onReassign: (itemId: string, playerId: string) => void;
-  onApprove?: (itemId: string) => void;
+  onUnclaim: (itemId: string, playerId: string) => void;
+  onReassign: (itemId: string, from: string, to: string) => void;
+  onApprove?: (itemId: string, playerId: string) => void;
   /** When present, the header shows an End button that confirms before calling it. */
   onEnd?: () => void;
   /** Rendered under the header, above the scoreboard (connection badge in rooms). */
@@ -27,9 +27,31 @@ export interface CalledItBoardProps {
 
 type SheetState =
   | { kind: 'none' }
-  | { kind: 'who'; item: PackItem }
-  | { kind: 'claimed'; item: PackItem; reassigning: boolean }
+  /** Who has the item and who can still call it. `reassigning` is the player whose call is being handed over. */
+  | { kind: 'item'; item: PackItem; reassigning: string | null }
   | { kind: 'end' };
+
+/**
+ * The time, re-read when the next claim window closes so a greyed chip opens
+ * again without anyone tapping.
+ */
+function useClaimClock(game: SpotItState): number {
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  const now = Date.now();
+  let next = Infinity;
+  for (const claims of Object.values(game.claims)) {
+    for (const c of claims) {
+      const until = c.at + CLAIM_WINDOW_MS;
+      if (until > now && until < next) next = until;
+    }
+  }
+  useEffect(() => {
+    if (next === Infinity) return;
+    const id = window.setTimeout(tick, Math.max(0, next - Date.now()) + 50);
+    return () => window.clearTimeout(id);
+  }, [next]);
+  return now;
+}
 
 export function CalledItBoard(props: CalledItBoardProps) {
   const { game, you, isHost, onClaim, onUnclaim, onReassign, onApprove, onEnd, headerExtra, headerAction } = props;
@@ -37,12 +59,15 @@ export function CalledItBoard(props: CalledItBoardProps) {
   const [sheet, setSheet] = useState<SheetState>({ kind: 'none' });
   const standings = useMemo(() => spotItStandings(game), [game]);
   const playing = game.status === 'playing';
+  const now = useClaimClock(game);
 
   const playerById = (id: string): Player | undefined => game.players.find((p) => p.id === id);
   const nameOf = (id: string): string => playerById(id)?.name ?? 'Someone';
   // People who left the trip keep their score but cannot be handed a call.
   const active = game.players.filter((p) => !p.left);
-  const remaining = game.items.filter((i) => game.claims[i.id]?.status !== 'claimed').length;
+  // On a shared phone with one name there is no one to ask.
+  const only = you ?? (active.length === 1 ? active[0]?.id : undefined) ?? null;
+  const uncalled = game.items.filter((i) => claimsOn(game, i.id).length === 0).length;
 
   function close() {
     setSheet({ kind: 'none' });
@@ -55,45 +80,55 @@ export function CalledItBoard(props: CalledItBoardProps) {
   }
 
   function onChipTap(item: PackItem) {
-    const existing = game.claims[item.id];
-    if (existing) {
-      if (isHost) {
-        setSheet({ kind: 'claimed', item, reassigning: false });
-      } else if (existing.status === 'pending' && existing.playerId === you) {
-        toast.show('Waiting for the host to OK it');
-      } else {
-        toast.show(`${nameOf(existing.playerId)} got it`);
-      }
+    const claims = claimsOn(game, item.id);
+    // The host manages calls from the sheet; on a shared phone every tap picks who called it.
+    if (isHost && (claims.length > 0 || !you)) {
+      if (!you && claims.length === 0 && only) return playing ? doClaim(item, only) : undefined;
+      setSheet({ kind: 'item', item, reassigning: null });
       return;
     }
-    if (!playing) return;
-    if (you) return doClaim(item, you);
-    const only = active.length === 1 ? active[0] : undefined;
-    if (only) return doClaim(item, only.id);
-    setSheet({ kind: 'who', item });
+    if (!playing || !you) return;
+    const mine = claimBy(game, item.id, you);
+    if (mine) {
+      toast.show(mine.status === 'pending' ? 'Waiting for the host to OK it' : 'You already called that one');
+      return;
+    }
+    const recent = recentCall(game, item.id, now);
+    if (recent) {
+      toast.show(`${nameOf(recent.playerId)} just called it`);
+      return;
+    }
+    doClaim(item, you);
   }
 
-  function doUndo(item: PackItem) {
-    onUnclaim(item.id);
-    toast.show(`"${item.text}" is back up for grabs`);
+  function doUndo(item: PackItem, c: Claim) {
+    onUnclaim(item.id, c.playerId);
+    toast.show(c.status === 'pending' ? `"${item.text}" is back up for grabs` : `${nameOf(c.playerId)} loses "${item.text}"`);
     close();
   }
 
-  function doReassign(item: PackItem, player: Player) {
-    onReassign(item.id, player.id);
-    toast.show(`${player.name} gets "${item.text}"`);
+  function doReassign(item: PackItem, from: string, to: Player) {
+    onReassign(item.id, from, to.id);
+    toast.show(`${to.name} gets "${item.text}"`);
     close();
   }
 
-  function doApprove(item: PackItem, claimer: string) {
-    onApprove?.(item.id);
-    toast.show(`${claimer} gets "${item.text}"`);
+  function doApprove(item: PackItem, c: Claim) {
+    onApprove?.(item.id, c.playerId);
+    toast.show(`${nameOf(c.playerId)} gets "${item.text}"`);
     close();
   }
 
-  const claimedSheet = sheet.kind === 'claimed' ? game.claims[sheet.item.id] : undefined;
-  const claimedName = claimedSheet ? nameOf(claimedSheet.playerId) : 'Someone';
-  const claimedPending = claimedSheet?.status === 'pending';
+  const itemSheet = sheet.kind === 'item' ? sheet : null;
+  const sheetClaims = itemSheet ? claimsOn(game, itemSheet.item.id) : [];
+  const sheetRecent = itemSheet ? recentCall(game, itemSheet.item.id, now) : undefined;
+  /** Who could still call the item from this phone: the host in a room, anyone without it on a shared phone. */
+  const sheetCallers = itemSheet
+    ? active.filter((p) => (you ? p.id === you : true) && !claimBy(game, itemSheet.item.id, p.id))
+    : [];
+  const sheetTargets = itemSheet?.reassigning
+    ? active.filter((p) => p.id !== itemSheet.reassigning && !claimBy(game, itemSheet.item.id, p.id))
+    : [];
 
   return (
     <Page
@@ -112,88 +147,116 @@ export function CalledItBoard(props: CalledItBoardProps) {
       {headerExtra}
       <Scoreboard standings={standings} />
       <p className="muted small center board-note">
-        {playing ? `${remaining} left · tap what you see` : 'Game over'}
+        {!playing ? 'Game over' : only ? `${remainingFor(game, only)} left for you · tap what you see` : 'Tap what you see'}
       </p>
       <div className="chip-grid">
         {game.items.map((item) => {
-          const c = game.claims[item.id];
-          const claimer = c ? nameOf(c.playerId) : undefined;
-          const pending = c?.status === 'pending';
-          const cls = ['chip', c ? (pending ? 'chip-pending' : 'chip-claimed') : ''].filter(Boolean).join(' ');
-          const label = c
-            ? `${item.text}, ${pending ? 'called by' : 'claimed by'} ${claimer}${pending ? ', waiting for the host' : ''}`
-            : item.text;
+          const claims = claimsOn(game, item.id);
+          const mine = you ? claimBy(game, item.id, you) : undefined;
+          const recent = recentCall(game, item.id, now);
+          const blocked = !!recent && recent.playerId !== you;
+          // On a shared phone an item is done once everyone still playing has it.
+          const done = you ? mine?.status === 'claimed' : claims.length > 0 && active.every((p) => claimBy(game, item.id, p.id)?.status === 'claimed');
+          const pending = mine?.status === 'pending';
+          const names = claims.map((c) => `${nameOf(c.playerId)}${c.status === 'pending' ? ' · waiting' : ''}`);
+          const cls = ['chip', done ? 'chip-claimed' : pending ? 'chip-pending' : blocked ? 'chip-window' : '']
+            .filter(Boolean)
+            .join(' ');
+          const callers = blocked ? `${nameOf(recent.playerId)} just called it` : names.join(', ');
+          const label = pending
+            ? `${item.text}, called by you, waiting for the host`
+            : callers
+              ? `${item.text}, ${blocked ? callers : `called by ${callers}`}`
+              : item.text;
           return (
             <button key={item.id} className={cls} onClick={() => onChipTap(item)} aria-label={label}>
               <span>{item.text}</span>
-              {claimer && (
-                <span className="chip-claimer">
-                  {claimer}
-                  {pending ? ' · waiting' : ''}
-                </span>
-              )}
+              {callers && <span className="chip-claimer">{callers}</span>}
             </button>
           );
         })}
       </div>
 
-      <Sheet open={sheet.kind === 'who'} title={sheet.kind === 'who' ? `Who called "${sheet.item.text}"?` : undefined} onClose={close}>
-        {sheet.kind === 'who' &&
-          active.map((p) => (
-            <button key={p.id} className="btn btn-primary btn-big" onClick={() => doClaim(sheet.item, p.id)}>
-              {p.name}
-            </button>
-          ))}
-        <button className="btn btn-ghost" onClick={close}>
-          Cancel
-        </button>
-      </Sheet>
-
       <Sheet
-        open={sheet.kind === 'claimed'}
+        open={!!itemSheet}
         title={
-          sheet.kind === 'claimed'
-            ? sheet.reassigning
-              ? `Who really called "${sheet.item.text}"?`
-              : `${claimedName} called "${sheet.item.text}"`
+          itemSheet
+            ? itemSheet.reassigning
+              ? `Who really called "${itemSheet.item.text}"?`
+              : sheetClaims.length === 0
+                ? `Who called "${itemSheet.item.text}"?`
+                : itemSheet.item.text
             : undefined
         }
         onClose={close}
       >
-        {sheet.kind === 'claimed' && !sheet.reassigning && (
+        {itemSheet && itemSheet.reassigning && (
           <>
-            {claimedPending && <p className="muted center">Waiting for your OK.</p>}
-            {claimedPending && claimedSheet && (
-              <button className="btn btn-win" onClick={() => doApprove(sheet.item, claimedName)}>
-                OK, {claimedName} got it
-              </button>
-            )}
-            <button className="btn btn-danger" onClick={() => doUndo(sheet.item)}>
-              {claimedPending ? 'No, they didn’t' : 'Undo'}
-            </button>
-            {active.some((p) => p.id !== claimedSheet?.playerId) && (
-              <button className="btn" onClick={() => setSheet({ ...sheet, reassigning: true })}>
-                Give it to someone else
-              </button>
-            )}
-          </>
-        )}
-        {sheet.kind === 'claimed' &&
-          sheet.reassigning &&
-          active
-            .filter((p) => p.id !== claimedSheet?.playerId)
-            .map((p) => (
-              <button key={p.id} className="btn btn-primary" onClick={() => doReassign(sheet.item, p)}>
+            {sheetTargets.map((p) => (
+              <button key={p.id} className="btn btn-primary" onClick={() => doReassign(itemSheet.item, itemSheet.reassigning!, p)}>
                 {p.name}
               </button>
             ))}
-        <button className="btn btn-ghost" onClick={close}>
-          Cancel
-        </button>
+            <button className="btn btn-ghost" onClick={() => setSheet({ ...itemSheet, reassigning: null })}>
+              Back
+            </button>
+          </>
+        )}
+        {itemSheet && !itemSheet.reassigning && (
+          <>
+            {playing && sheetCallers.length > 0 && sheetRecent && (
+              <p className="muted center">{nameOf(sheetRecent.playerId)} just called it. The next one is up for grabs in a moment.</p>
+            )}
+            {playing &&
+              sheetCallers.map((p) => (
+                <button
+                  key={p.id}
+                  className="btn btn-primary btn-big"
+                  disabled={!!sheetRecent}
+                  onClick={() => doClaim(itemSheet.item, p.id)}
+                >
+                  {you ? 'I called it too' : p.name}
+                </button>
+              ))}
+            {sheetClaims.length > 0 && <div className="field-label">Called by</div>}
+            {sheetClaims.map((c) => {
+              const waiting = c.status === 'pending';
+              const canGive = active.some((p) => p.id !== c.playerId && !claimBy(game, itemSheet.item.id, p.id));
+              return (
+                <div className="claim-row" key={c.playerId}>
+                  <span className="grow">
+                    {nameOf(c.playerId)}
+                    {waiting && <span className="muted"> · waiting for your OK</span>}
+                  </span>
+                  {playing && waiting && (
+                    <button className="btn btn-win btn-auto" onClick={() => doApprove(itemSheet.item, c)}>
+                      OK
+                    </button>
+                  )}
+                  {playing && (
+                    <button className="btn btn-danger btn-auto" onClick={() => doUndo(itemSheet.item, c)}>
+                      {waiting ? 'No' : 'Undo'}
+                    </button>
+                  )}
+                  {playing && canGive && (
+                    <button className="btn btn-auto" onClick={() => setSheet({ ...itemSheet, reassigning: c.playerId })}>
+                      Give
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button className="btn btn-ghost" onClick={close}>
+              {sheetCallers.length > 0 && playing ? 'Cancel' : 'Close'}
+            </button>
+          </>
+        )}
       </Sheet>
 
       <Sheet open={sheet.kind === 'end'} title="End the game?" onClose={close}>
-        <p className="muted center">Scores stay as they are. {remaining} items were never called.</p>
+        <p className="muted center">
+          Scores stay as they are. {uncalled === 0 ? 'Every item was called at least once.' : `${uncalled} items were never called.`}
+        </p>
         <button
           className="btn btn-danger"
           onClick={() => {

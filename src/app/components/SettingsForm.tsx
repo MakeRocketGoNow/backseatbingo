@@ -95,7 +95,7 @@ export function SettingsForm({ packs, isLoading, value, onChange, showApprovals,
             >
               {MODE_LABELS[m]}
               <span className="btn-sub">
-                {m === 'spotit' ? 'First to tap it claims it' : disabled ? `Needs ${BINGO_MIN_ITEMS} items in the list` : 'Fill your card first'}
+                {m === 'spotit' ? 'Everyone hunts the same list' : disabled ? `Needs ${BINGO_MIN_ITEMS} items in the list` : 'Fill your card first'}
               </span>
             </button>
           );

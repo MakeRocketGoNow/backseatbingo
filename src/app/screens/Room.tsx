@@ -69,9 +69,9 @@ function Playing() {
         you={you}
         isHost={isHost}
         onClaim={(itemId) => send({ type: 'claim', itemId })}
-        onUnclaim={(itemId) => send({ type: 'unclaim', itemId })}
-        onReassign={(itemId, playerId) => send({ type: 'reassign', itemId, playerId })}
-        onApprove={(itemId) => send({ type: 'approve', itemId })}
+        onUnclaim={(itemId, playerId) => send({ type: 'unclaim', itemId, playerId })}
+        onReassign={(itemId, from, to) => send({ type: 'reassign', itemId, from, to })}
+        onApprove={(itemId, playerId) => send({ type: 'approve', itemId, playerId })}
         onEnd={isHost ? () => send({ type: 'end' }) : undefined}
         headerExtra={badge}
         headerAction={guestAction}

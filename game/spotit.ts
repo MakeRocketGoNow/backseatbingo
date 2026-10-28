@@ -1,8 +1,21 @@
 import type { Claim, PackItem, Player, SpotItState, Standing } from '../shared/types';
 
-export type SpotItError = 'not-playing' | 'unknown-item' | 'unknown-player' | 'already-claimed' | 'not-claimed';
+export type SpotItError =
+  | 'not-playing'
+  | 'unknown-item'
+  | 'unknown-player'
+  | 'already-claimed'
+  | 'just-called'
+  | 'not-claimed';
 
 export type Result<T> = { ok: true; state: T } | { ok: false; error: SpotItError };
+
+/**
+ * How long one player's call keeps everyone else off the item. The app cannot
+ * tell two red barns apart, so for this long after a call the item is treated
+ * as that sighting: a second tap on it is the same barn, not a new one.
+ */
+export const CLAIM_WINDOW_MS = 10_000;
 
 export function createSpotItGame(players: Player[], items: PackItem[]): SpotItState {
   return { mode: 'spotit', status: 'playing', players, items, claims: {} };
@@ -16,10 +29,36 @@ function hasItem(state: SpotItState, itemId: string): boolean {
   return state.items.some((i) => i.id === itemId);
 }
 
+/** Every call on an item, oldest first. */
+export function claimsOn(state: SpotItState, itemId: string): Claim[] {
+  return state.claims[itemId] ?? [];
+}
+
+export function claimBy(state: SpotItState, itemId: string, playerId: string): Claim | undefined {
+  return claimsOn(state, itemId).find((c) => c.playerId === playerId);
+}
+
+/** The call still inside its claim window at `now`, if any. */
+export function recentCall(state: SpotItState, itemId: string, now: number): Claim | undefined {
+  let latest: Claim | undefined;
+  for (const c of claimsOn(state, itemId)) {
+    if (!latest || c.at > latest.at) latest = c;
+  }
+  return latest && now - latest.at < CLAIM_WINDOW_MS ? latest : undefined;
+}
+
+function withClaims(state: SpotItState, itemId: string, claims: Claim[]): SpotItState {
+  const next = { ...state.claims };
+  if (claims.length === 0) delete next[itemId];
+  else next[itemId] = claims;
+  return { ...state, claims: next };
+}
+
 /**
- * First-write-wins. A second claim on the same item is rejected, whether the
- * first one is claimed or still pending host approval. With `pending` the
- * claim reserves the item but does not score until `approveClaim`.
+ * Cross an item off for a player. Every player can have every item, once
+ * each, but not the same sighting: a call inside another player's claim
+ * window is rejected. With `pending` the claim is listed but does not score
+ * until `approveClaim`.
  */
 export function claim(
   state: SpotItState,
@@ -31,22 +70,22 @@ export function claim(
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
   if (!hasItem(state, itemId)) return { ok: false, error: 'unknown-item' };
   if (!hasPlayer(state, playerId)) return { ok: false, error: 'unknown-player' };
-  if (state.claims[itemId]) return { ok: false, error: 'already-claimed' };
+  if (claimBy(state, itemId, playerId)) return { ok: false, error: 'already-claimed' };
+  if (recentCall(state, itemId, at)) return { ok: false, error: 'just-called' };
   const next: Claim = { itemId, playerId, at, status: pending ? 'pending' : 'claimed' };
-  const claims = { ...state.claims, [itemId]: next };
-  const nextState: SpotItState = { ...state, claims };
-  return { ok: true, state: isExhausted(nextState) ? endSpotItGame(nextState, at) : nextState };
+  const nextState = withClaims(state, itemId, [...claimsOn(state, itemId), next]);
+  return { ok: true, state: listFinished(nextState) ? endSpotItGame(nextState, at) : nextState };
 }
 
-/** Host approves a pending claim. It then scores like any other claim. */
-export function approveClaim(state: SpotItState, itemId: string, at: number): Result<SpotItState> {
+/** Host approves a player's pending claim. It then scores like any other claim. */
+export function approveClaim(state: SpotItState, itemId: string, playerId: string, at: number): Result<SpotItState> {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
-  const existing = state.claims[itemId];
+  const existing = claimBy(state, itemId, playerId);
   if (!existing) return { ok: false, error: 'not-claimed' };
   if (existing.status === 'claimed') return { ok: true, state };
-  const claims = { ...state.claims, [itemId]: { ...existing, status: 'claimed' as const, at } };
-  const nextState: SpotItState = { ...state, claims };
-  return { ok: true, state: isExhausted(nextState) ? endSpotItGame(nextState, at) : nextState };
+  const claims = claimsOn(state, itemId).map((c) => (c === existing ? { ...c, status: 'claimed' as const, at } : c));
+  const nextState = withClaims(state, itemId, claims);
+  return { ok: true, state: listFinished(nextState) ? endSpotItGame(nextState, at) : nextState };
 }
 
 /** Add a late joiner. Idempotent for players already in the game. */
@@ -55,27 +94,40 @@ export function addSpotItPlayer(state: SpotItState, player: Player): SpotItState
   return { ...state, players: [...state.players, player] };
 }
 
-/** Host undo, or rejection of a pending claim. Returns the item to unclaimed. */
-export function unclaim(state: SpotItState, itemId: string): Result<SpotItState> {
+/** Host undo, or rejection of a pending claim. The player loses the item; everyone else's calls stand. */
+export function unclaim(state: SpotItState, itemId: string, playerId: string): Result<SpotItState> {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
-  if (!state.claims[itemId]) return { ok: false, error: 'not-claimed' };
-  const claims = { ...state.claims };
-  delete claims[itemId];
-  return { ok: true, state: { ...state, claims } };
-}
-
-/** Host reassign: hand an existing claim to a different player. */
-export function reassign(state: SpotItState, itemId: string, playerId: string, at: number): Result<SpotItState> {
-  if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
-  const existing = state.claims[itemId];
+  const existing = claimBy(state, itemId, playerId);
   if (!existing) return { ok: false, error: 'not-claimed' };
-  if (!hasPlayer(state, playerId)) return { ok: false, error: 'unknown-player' };
-  const claims = { ...state.claims, [itemId]: { ...existing, playerId, at } };
-  return { ok: true, state: { ...state, claims } };
+  return { ok: true, state: withClaims(state, itemId, claimsOn(state, itemId).filter((c) => c !== existing)) };
 }
 
-export function isExhausted(state: SpotItState): boolean {
-  return state.items.every((item) => state.claims[item.id]?.status === 'claimed');
+/**
+ * Host reassign: the call was really someone else's. The claim keeps its
+ * time, so handing it over does not restart the claim window.
+ */
+export function reassign(state: SpotItState, itemId: string, from: string, to: string): Result<SpotItState> {
+  if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
+  const existing = claimBy(state, itemId, from);
+  if (!existing) return { ok: false, error: 'not-claimed' };
+  if (!hasPlayer(state, to)) return { ok: false, error: 'unknown-player' };
+  if (claimBy(state, itemId, to)) return { ok: false, error: 'already-claimed' };
+  const claims = claimsOn(state, itemId).map((c) => (c === existing ? { ...c, playerId: to } : c));
+  return { ok: true, state: withClaims(state, itemId, claims) };
+}
+
+/** Items the player has not crossed off (pending claims count as crossed off, they are waiting on the host). */
+export function remainingFor(state: SpotItState, playerId: string): number {
+  return state.items.filter((item) => !claimBy(state, item.id, playerId)).length;
+}
+
+/** The first player to cross off the whole list, if anyone has. */
+export function finisher(state: SpotItState): Player | undefined {
+  return state.players.find((p) => scoreFor(state, p.id) === state.items.length);
+}
+
+export function listFinished(state: SpotItState): boolean {
+  return finisher(state) !== undefined;
 }
 
 export function endSpotItGame(state: SpotItState, at: number): SpotItState {
@@ -85,8 +137,10 @@ export function endSpotItGame(state: SpotItState, at: number): SpotItState {
 
 export function scoreFor(state: SpotItState, playerId: string): number {
   let n = 0;
-  for (const c of Object.values(state.claims)) {
-    if (c.playerId === playerId && c.status === 'claimed') n++;
+  for (const claims of Object.values(state.claims)) {
+    for (const c of claims) {
+      if (c.playerId === playerId && c.status === 'claimed') n++;
+    }
   }
   return n;
 }

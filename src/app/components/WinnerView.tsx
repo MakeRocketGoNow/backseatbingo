@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { GameState } from '@shared/types';
 import { BINGO_PATTERN_LABELS, MODE_LABELS } from '@shared/types';
-import { bingoStandings, spotItStandings } from '@game/index';
+import { bingoStandings, finisher, spotItStandings } from '@game/index';
 import { Page } from './Page';
 import { TipLine } from './TipLine';
 
@@ -19,10 +19,12 @@ export function WinnerView({ game, children, headerExtra }: WinnerViewProps) {
   const bingoWinner = isBingo && game.winners.length > 0;
   const noWinner = (isBingo && !bingoWinner) || (!isBingo && (top?.score ?? 0) === 0);
   const tiedTop = standings.filter((s) => s.rank === 1);
+  const finished = isBingo ? undefined : finisher(game);
 
   let headline: string;
   if (noWinner) headline = isBingo ? 'No one got Bingo' : 'No one called anything';
   else if (isBingo) headline = `${top?.player.name} got Bingo!`;
+  else if (finished) headline = `${finished.name} got the whole list!`;
   else if (tiedTop.length > 1) headline = `It's a tie!`;
   else headline = `${top?.player.name} wins!`;
 

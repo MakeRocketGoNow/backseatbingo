@@ -3,6 +3,7 @@ import type { Pack, RoomSettings, RoomState } from '../shared/types';
 import { MAX_NAME_LENGTH, MAX_ROOM_PLAYERS } from '../shared/types';
 import { applyAction, createRoom, joinRoom, setConnected } from './room';
 import { seededRng } from './rng';
+import { CLAIM_WINDOW_MS } from './spotit';
 
 const pack: Pack = {
   id: 'test',
@@ -82,13 +83,18 @@ describe('Called It in a room', () => {
   }
   const firstItem = (r: RoomState) => (r.game?.mode === 'spotit' ? r.game.items[0]!.id : '');
 
-  it('auto mode: first tap wins and the loser gets the claimer name', () => {
+  it('auto mode: everyone can call an item, but not inside another call\'s window', () => {
     const r = playing();
     const item = firstItem(r);
     const r2 = must(applyAction(r, 'g1', { type: 'claim', itemId: item }, 4, rng()));
-    const lost = applyAction(r2, 'h', { type: 'claim', itemId: item }, 5, rng());
-    expect(lost.error).toEqual({ code: 'already-claimed', message: 'Kid got it' });
-    expect(lost.room).toBe(r2);
+    const same = applyAction(r2, 'h', { type: 'claim', itemId: item }, 5, rng());
+    expect(same.error).toEqual({ code: 'just-called', message: 'Kid just called it' });
+    expect(same.room).toBe(r2);
+    const r3 = must(applyAction(r2, 'h', { type: 'claim', itemId: item }, 4 + CLAIM_WINDOW_MS, rng()));
+    if (r3.game?.mode !== 'spotit') throw new Error('mode');
+    expect(r3.game.claims[item]?.map((c) => c.playerId)).toEqual(['g1', 'h']);
+    const twice = applyAction(r3, 'h', { type: 'claim', itemId: item }, 5 + 2 * CLAIM_WINDOW_MS, rng());
+    expect(twice.error).toEqual({ code: 'already-claimed', message: 'You already called that one' });
   });
 
   it('host approvals: guest claims wait, host claims do not, host approves or rejects', () => {
@@ -97,15 +103,15 @@ describe('Called It in a room', () => {
     let s = must(applyAction(r, 'g1', { type: 'claim', itemId: a! }, 4, rng()));
     s = must(applyAction(s, 'h', { type: 'claim', itemId: b! }, 5, rng()));
     if (s.game?.mode !== 'spotit') throw new Error('mode');
-    expect(s.game.claims[a!]?.status).toBe('pending');
-    expect(s.game.claims[b!]?.status).toBe('claimed');
+    expect(s.game.claims[a!]?.[0]?.status).toBe('pending');
+    expect(s.game.claims[b!]?.[0]?.status).toBe('claimed');
 
-    expect(applyAction(s, 'g1', { type: 'approve', itemId: a! }, 6, rng()).error?.code).toBe('not-host');
-    const approved = must(applyAction(s, 'h', { type: 'approve', itemId: a! }, 6, rng()));
+    expect(applyAction(s, 'g1', { type: 'approve', itemId: a!, playerId: 'g1' }, 6, rng()).error?.code).toBe('not-host');
+    const approved = must(applyAction(s, 'h', { type: 'approve', itemId: a!, playerId: 'g1' }, 6, rng()));
     if (approved.game?.mode !== 'spotit') throw new Error('mode');
-    expect(approved.game.claims[a!]?.status).toBe('claimed');
+    expect(approved.game.claims[a!]?.[0]?.status).toBe('claimed');
 
-    const rejected = must(applyAction(s, 'h', { type: 'unclaim', itemId: a! }, 7, rng()));
+    const rejected = must(applyAction(s, 'h', { type: 'unclaim', itemId: a!, playerId: 'g1' }, 7, rng()));
     if (rejected.game?.mode !== 'spotit') throw new Error('mode');
     expect(rejected.game.claims[a!]).toBeUndefined();
   });
@@ -114,13 +120,16 @@ describe('Called It in a room', () => {
     const r = playing();
     const item = firstItem(r);
     const r2 = must(applyAction(r, 'g1', { type: 'claim', itemId: item }, 4, rng()));
-    expect(applyAction(r2, 'g1', { type: 'unclaim', itemId: item }, 5, rng()).error?.code).toBe('not-host');
-    const r3 = must(applyAction(r2, 'h', { type: 'reassign', itemId: item, playerId: 'h' }, 5, rng()));
+    expect(applyAction(r2, 'g1', { type: 'unclaim', itemId: item, playerId: 'g1' }, 5, rng()).error?.code).toBe('not-host');
+    const r3 = must(applyAction(r2, 'h', { type: 'reassign', itemId: item, from: 'g1', to: 'h' }, 5, rng()));
     if (r3.game?.mode !== 'spotit') throw new Error('mode');
-    expect(r3.game.claims[item]?.playerId).toBe('h');
+    expect(r3.game.claims[item]?.map((c) => c.playerId)).toEqual(['h']);
+    const r4 = must(applyAction(r3, 'g1', { type: 'claim', itemId: item }, 4 + CLAIM_WINDOW_MS, rng()));
+    const back = applyAction(r4, 'h', { type: 'reassign', itemId: item, from: 'h', to: 'g1' }, 5 + CLAIM_WINDOW_MS, rng());
+    expect(back.error).toEqual({ code: 'already-claimed', message: 'They already have that one' });
   });
 
-  it('the room ends when the list is exhausted or the host ends it', () => {
+  it('the room ends when a player finishes the list or the host ends it', () => {
     let r = playing();
     if (r.game?.mode !== 'spotit') throw new Error('mode');
     for (const item of r.game.items) {
@@ -187,11 +196,11 @@ describe('leaving mid-round', () => {
     expect(left.players.map((p) => p.id)).toEqual(['h']);
     if (left.game?.mode !== 'spotit') throw new Error('mode');
     expect(left.game.players.find((p) => p.id === 'g1')).toEqual({ id: 'g1', name: 'Kid', left: true });
-    expect(left.game.claims[item]?.playerId).toBe('g1');
-    expect(applyAction(left, 'h', { type: 'claim', itemId: item }, 5, rng()).error?.message).toBe('Kid got it');
+    expect(left.game.claims[item]?.[0]?.playerId).toBe('g1');
+    expect(applyAction(left, 'h', { type: 'claim', itemId: item }, 5, rng()).error?.message).toBe('Kid just called it');
     const other = left.game.items[1]!.id;
     const handed = must(applyAction(left, 'h', { type: 'claim', itemId: other }, 6, rng()));
-    expect(applyAction(handed, 'h', { type: 'reassign', itemId: other, playerId: 'g1' }, 7, rng()).error?.code).toBe(
+    expect(applyAction(handed, 'h', { type: 'reassign', itemId: other, from: 'h', to: 'g1' }, 7, rng()).error?.code).toBe(
       'unknown-player',
     );
   });
@@ -204,7 +213,7 @@ describe('leaving mid-round', () => {
     expect(back.players.find((p) => p.id === 'g1')?.name).toBe('Kiddo');
     if (back.game?.mode !== 'spotit') throw new Error('mode');
     expect(back.game.players.find((p) => p.id === 'g1')).toEqual({ id: 'g1', name: 'Kiddo' });
-    expect(back.game.claims[item]?.playerId).toBe('g1');
+    expect(back.game.claims[item]?.[0]?.playerId).toBe('g1');
   });
 
   it('the next round starts without them and frees their name', () => {
