@@ -142,7 +142,7 @@ export function remainingFor(state: SpotItState, playerId: string): number {
   return state.items.filter((item) => !claimBy(state, item.id, playerId)).length;
 }
 
-/** The first player to cross off the whole list, if anyone has. */
+/** The player who has the whole list, if anyone does. At most one can: the game ends the moment anyone finishes. */
 export function finisher(state: SpotItState): Player | undefined {
   return state.players.find((p) => scoreFor(state, p.id) === state.items.length);
 }
