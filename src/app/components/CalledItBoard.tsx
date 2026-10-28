@@ -166,7 +166,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
           const label = pending
             ? `${item.text}, called by you, waiting for the host`
             : mine
-              ? `${item.text}, you have it, called by ${callers}`
+              ? `${item.text}, you have it, called by ${names.join(', ')}`
               : callers
                 ? `${item.text}, ${blocked ? callers : `called by ${callers}`}`
                 : item.text;
