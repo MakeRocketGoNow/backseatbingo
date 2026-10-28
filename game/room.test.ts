@@ -153,6 +153,20 @@ describe('Called It in a room', () => {
     expect(back.error).toEqual({ code: 'already-claimed', message: 'They already have that one' });
   });
 
+  it('the room ends when a reassign hands a player their last item', () => {
+    let r = playing();
+    if (r.game?.mode !== 'spotit') throw new Error('mode');
+    const [last, ...rest] = r.game.items.map((i) => i.id);
+    for (const item of rest) {
+      r = must(applyAction(r, 'g1', { type: 'claim', itemId: item }, 4, rng()));
+    }
+    r = must(applyAction(r, 'h', { type: 'claim', itemId: last! }, 5, rng()));
+    expect(r.status).toBe('playing');
+    r = must(applyAction(r, 'h', { type: 'reassign', itemId: last!, from: 'h', to: 'g1' }, 6, rng()));
+    expect(r.status).toBe('ended');
+    expect(r.game?.status).toBe('ended');
+  });
+
   it('the room ends when a player finishes the list or the host ends it', () => {
     let r = playing();
     if (r.game?.mode !== 'spotit') throw new Error('mode');

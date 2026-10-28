@@ -113,16 +113,32 @@ describe('Called It claims', () => {
   it('reassign hands the call to another player and keeps its time', () => {
     const s1 = claim(fresh(), 'a', 'p1', 1000);
     if (!s1.ok) throw new Error('claim failed');
-    const s2 = reassign(s1.state, 'a', 'p1', 'p3');
+    const s2 = reassign(s1.state, 'a', 'p1', 'p3', 2000);
     expect(s2.ok).toBe(true);
     if (!s2.ok) return;
     expect(claimsOn(s2.state, 'a')).toEqual([{ itemId: 'a', playerId: 'p3', at: 1000, status: 'claimed' }]);
-    expect(reassign(s2.state, 'b', 'p1', 'p2')).toEqual({ ok: false, error: 'not-claimed' });
-    expect(reassign(s2.state, 'a', 'p1', 'p2')).toEqual({ ok: false, error: 'not-claimed' });
-    expect(reassign(s2.state, 'a', 'p3', 'ghost')).toEqual({ ok: false, error: 'unknown-player' });
+    expect(reassign(s2.state, 'b', 'p1', 'p2', 2000)).toEqual({ ok: false, error: 'not-claimed' });
+    expect(reassign(s2.state, 'a', 'p1', 'p2', 2000)).toEqual({ ok: false, error: 'not-claimed' });
+    expect(reassign(s2.state, 'a', 'p3', 'ghost', 2000)).toEqual({ ok: false, error: 'unknown-player' });
     const s3 = claim(s2.state, 'a', 'p2', 1000 + LATER);
     if (!s3.ok) throw new Error('claim failed');
-    expect(reassign(s3.state, 'a', 'p3', 'p2')).toEqual({ ok: false, error: 'already-claimed' });
+    expect(reassign(s3.state, 'a', 'p3', 'p2', 2000 + LATER)).toEqual({ ok: false, error: 'already-claimed' });
+  });
+
+  it('a reassign that hands a player their last item ends the game', () => {
+    let s = fresh();
+    for (const [i, item] of ['a', 'b'].entries()) {
+      const r = claim(s, item, 'p1', (i + 1) * LATER);
+      if (!r.ok) throw new Error(r.error);
+      s = r.state;
+    }
+    const r = claim(s, 'c', 'p2', 3 * LATER);
+    if (!r.ok) throw new Error(r.error);
+    const handed = reassign(r.state, 'c', 'p2', 'p1', 4 * LATER);
+    if (!handed.ok) throw new Error(handed.error);
+    expect(handed.state.status).toBe('ended');
+    expect(handed.state.endedAt).toBe(4 * LATER);
+    expect(finisher(handed.state)?.id).toBe('p1');
   });
 
   it('ends when a player finishes the whole list', () => {
@@ -159,7 +175,7 @@ describe('Called It claims', () => {
     expect(finisher(ended)).toBeUndefined();
     expect(claim(ended, 'b', 'p2', 11)).toEqual({ ok: false, error: 'not-playing' });
     expect(unclaim(ended, 'a', 'p1')).toEqual({ ok: false, error: 'not-playing' });
-    expect(reassign(ended, 'a', 'p1', 'p2')).toEqual({ ok: false, error: 'not-playing' });
+    expect(reassign(ended, 'a', 'p1', 'p2', 12)).toEqual({ ok: false, error: 'not-playing' });
     expect(endSpotItGame(ended, 99)).toBe(ended);
   });
 });

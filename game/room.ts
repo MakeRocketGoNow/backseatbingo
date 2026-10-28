@@ -241,7 +241,7 @@ export function applyAction(
           : action.type === 'unclaim'
             ? unclaim(game, action.itemId, action.playerId)
             : action.type === 'reassign'
-              ? reassign(game, action.itemId, action.from, action.to)
+              ? reassign(game, action.itemId, action.from, action.to, now)
               : approveClaim(game, action.itemId, action.playerId, now);
       if (!r.ok) {
         const message =

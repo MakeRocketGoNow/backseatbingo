@@ -106,7 +106,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       },
       claim: (itemId, playerId) => runSpotIt((s) => claim(s, itemId, playerId, Date.now())),
       unclaim: (itemId, playerId) => runSpotIt((s) => unclaim(s, itemId, playerId)),
-      reassign: (itemId, from, to) => runSpotIt((s) => reassign(s, itemId, from, to)),
+      reassign: (itemId, from, to) => runSpotIt((s) => reassign(s, itemId, from, to, Date.now())),
       toggleMark: (playerId, cell) => runBingo((s) => toggleMark(s, playerId, cell)),
       callBingo: (playerId) => runBingo((s) => callBingo(s, playerId, Date.now())),
       end: () => {

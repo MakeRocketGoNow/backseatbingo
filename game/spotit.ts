@@ -123,16 +123,18 @@ export function unclaim(state: SpotItState, itemId: string, playerId: string): R
 
 /**
  * Host reassign: the call was really someone else's. The claim keeps its
- * time, so handing it over does not restart the claim window.
+ * time, so handing it over does not restart the claim window. It can hand a
+ * player their last missing item, which ends the game like a claim would.
  */
-export function reassign(state: SpotItState, itemId: string, from: string, to: string): Result<SpotItState> {
+export function reassign(state: SpotItState, itemId: string, from: string, to: string, at: number): Result<SpotItState> {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
   const existing = claimBy(state, itemId, from);
   if (!existing) return { ok: false, error: 'not-claimed' };
   if (!hasPlayer(state, to)) return { ok: false, error: 'unknown-player' };
   if (claimBy(state, itemId, to)) return { ok: false, error: 'already-claimed' };
   const claims = claimsOn(state, itemId).map((c) => (c === existing ? { ...c, playerId: to } : c));
-  return { ok: true, state: withClaims(state, itemId, claims) };
+  const nextState = withClaims(state, itemId, claims);
+  return { ok: true, state: listFinished(nextState) ? endSpotItGame(nextState, at) : nextState };
 }
 
 /** Items the player has not crossed off (pending claims count as crossed off, they are waiting on the host). */
