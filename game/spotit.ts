@@ -92,13 +92,17 @@ export function claim(
   return { ok: true, state: listFinished(nextState) ? endSpotItGame(nextState, at) : nextState };
 }
 
-/** Host approves a player's pending claim. It then scores like any other claim. */
+/**
+ * Host approves a player's pending claim. It then scores like any other
+ * claim. The claim keeps the time of the call, not of the approval, so an
+ * approval minutes later does not start a new claim window.
+ */
 export function approveClaim(state: SpotItState, itemId: string, playerId: string, at: number): Result<SpotItState> {
   if (state.status !== 'playing') return { ok: false, error: 'not-playing' };
   const existing = claimBy(state, itemId, playerId);
   if (!existing) return { ok: false, error: 'not-claimed' };
   if (existing.status === 'claimed') return { ok: true, state };
-  const claims = claimsOn(state, itemId).map((c) => (c === existing ? { ...c, status: 'claimed' as const, at } : c));
+  const claims = claimsOn(state, itemId).map((c) => (c === existing ? { ...c, status: 'claimed' as const } : c));
   const nextState = withClaims(state, itemId, claims);
   return { ok: true, state: listFinished(nextState) ? endSpotItGame(nextState, at) : nextState };
 }

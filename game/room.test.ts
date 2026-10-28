@@ -116,6 +116,30 @@ describe('Called It in a room', () => {
     expect(rejected.game.claims[a!]).toBeUndefined();
   });
 
+  it('an approval long after the call does not grey the item again', () => {
+    const r = playing({ approvals: 'host' });
+    const item = firstItem(r);
+    const s = must(applyAction(r, 'g1', { type: 'claim', itemId: item }, 4, rng()));
+    const later = 4 + 30 * CLAIM_WINDOW_MS;
+    const approved = must(applyAction(s, 'h', { type: 'approve', itemId: item, playerId: 'g1' }, later, rng()));
+    expect(applyAction(approved, 'h', { type: 'claim', itemId: item }, later + 1, rng()).error).toBeUndefined();
+  });
+
+  it('the game ends when an approval completes a guest\'s list', () => {
+    let r = playing({ approvals: 'host' });
+    if (r.game?.mode !== 'spotit') throw new Error('mode');
+    for (const item of r.game.items) {
+      r = must(applyAction(r, 'g1', { type: 'claim', itemId: item.id }, 4, rng()));
+    }
+    expect(r.status).toBe('playing');
+    if (r.game?.mode !== 'spotit') throw new Error('mode');
+    for (const item of r.game.items) {
+      r = must(applyAction(r, 'h', { type: 'approve', itemId: item.id, playerId: 'g1' }, 5, rng()));
+    }
+    expect(r.status).toBe('ended');
+    expect(r.game?.status).toBe('ended');
+  });
+
   it('host can reassign; guests cannot undo', () => {
     const r = playing();
     const item = firstItem(r);

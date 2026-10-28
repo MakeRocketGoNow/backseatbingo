@@ -234,6 +234,16 @@ describe('Called It with host approvals', () => {
     expect(approveClaim(fresh(), 'a', 'p1', 1)).toEqual({ ok: false, error: 'not-claimed' });
   });
 
+  it('a late approval keeps the time of the call and does not reopen the window', () => {
+    const r1 = claim(fresh(), 'a', 'p1', 1000, true);
+    if (!r1.ok) throw new Error(r1.error);
+    const ok = approveClaim(r1.state, 'a', 'p1', 1000 + 60 * LATER);
+    if (!ok.ok) throw new Error(ok.error);
+    expect(claimBy(ok.state, 'a', 'p1')).toEqual({ itemId: 'a', playerId: 'p1', at: 1000, status: 'claimed' });
+    expect(recentCall(ok.state, 'a', 1001 + 60 * LATER)).toBeUndefined();
+    expect(claim(ok.state, 'a', 'p2', 1001 + 60 * LATER).ok).toBe(true);
+  });
+
   it('approving an already approved claim is a no-op', () => {
     const r1 = claim(fresh(), 'a', 'p1', 1);
     if (!r1.ok) throw new Error(r1.error);
