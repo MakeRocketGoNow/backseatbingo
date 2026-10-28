@@ -16,6 +16,7 @@ import {
   remainingFor,
   spotItStandings,
   unclaim,
+  upgradeGame,
 } from './spotit';
 
 const players: Player[] = [
@@ -238,6 +239,18 @@ describe('Called It with host approvals', () => {
     if (!r1.ok) throw new Error(r1.error);
     const r2 = approveClaim(r1.state, 'a', 'p1', 2);
     expect(r2.ok && r2.state).toBe(r1.state);
+  });
+});
+
+describe('stored games from before protocol 2', () => {
+  it('wraps a single claim per item into a list and leaves current games alone', () => {
+    const old = { ...fresh(), claims: { a: { itemId: 'a', playerId: 'p1', at: 1, status: 'claimed' } } } as unknown as ReturnType<typeof fresh>;
+    const up = upgradeGame(old);
+    expect(up.mode === 'spotit' && up.claims).toEqual({ a: [{ itemId: 'a', playerId: 'p1', at: 1, status: 'claimed' }] });
+    expect(upgradeGame(up)).toBe(up);
+    const current = claim(fresh(), 'a', 'p1', 1);
+    if (!current.ok) throw new Error(current.error);
+    expect(upgradeGame(current.state)).toBe(current.state);
   });
 });
 

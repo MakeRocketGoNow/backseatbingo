@@ -5,7 +5,7 @@ import { MAX_ROOM_PLAYERS } from '../shared/types';
 import { applyAction, createRoom, findPlayer, joinRoom, setConnected } from '../game/room';
 import { closedSocket } from './closed-socket';
 import type { Env } from './env';
-import { forgetDeparted, forgetLeaver, isMember, type Stored } from './stored';
+import { forgetDeparted, forgetLeaver, isMember, upgradeStored, type Stored } from './stored';
 
 /**
  * One Durable Object per room. It stores the whole room under one key, keeps
@@ -44,7 +44,9 @@ export class RoomDO extends DurableObject<Env> {
 
   private async load(): Promise<Stored | null> {
     if (this.cache === undefined) {
-      this.cache = (await this.ctx.storage.get<Stored>(STORAGE_KEY)) ?? null;
+      const stored = await this.ctx.storage.get<Stored>(STORAGE_KEY);
+      // Written back by the next change; a room nobody touches again just expires.
+      this.cache = stored ? upgradeStored(stored) : null;
     }
     return this.cache;
   }

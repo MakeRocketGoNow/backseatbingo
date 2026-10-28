@@ -8,6 +8,7 @@ import {
   reassign,
   toggleMark,
   unclaim,
+  upgradeGame,
   type BingoResult,
   type Result,
 } from '@game/index';
@@ -31,7 +32,7 @@ function readGame(): GameState | null {
     const raw = localStorage.getItem(GAME_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isGameState(parsed) ? parsed : null;
+    return isGameState(parsed) ? upgradeGame(parsed) : null;
   } catch {
     return null;
   }

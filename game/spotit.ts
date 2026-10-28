@@ -1,4 +1,4 @@
-import type { Claim, PackItem, Player, SpotItState, Standing } from '../shared/types';
+import type { Claim, GameState, PackItem, Player, SpotItState, Standing } from '../shared/types';
 
 export type SpotItError =
   | 'not-playing'
@@ -19,6 +19,21 @@ export const CLAIM_WINDOW_MS = 10_000;
 
 export function createSpotItGame(players: Player[], items: PackItem[]): SpotItState {
   return { mode: 'spotit', status: 'playing', players, items, claims: {} };
+}
+
+/**
+ * Bring a stored game up to the current shape. Before protocol 2 an item held
+ * one claim, not a list; a room or a saved local game from that build can
+ * still be open when this one arrives. Returns the same object when there is
+ * nothing to change.
+ */
+export function upgradeGame(game: GameState): GameState {
+  if (game.mode !== 'spotit') return game;
+  const legacy = Object.entries(game.claims as Record<string, Claim | Claim[]>).filter(([, c]) => !Array.isArray(c));
+  if (legacy.length === 0) return game;
+  const claims = { ...game.claims };
+  for (const [itemId, c] of legacy) claims[itemId] = [c as Claim];
+  return { ...game, claims };
 }
 
 function hasPlayer(state: SpotItState, playerId: string): boolean {
