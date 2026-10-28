@@ -165,9 +165,11 @@ export function CalledItBoard(props: CalledItBoardProps) {
           const callers = blocked ? `${nameOf(recent.playerId)} just called it` : names.join(', ');
           const label = pending
             ? `${item.text}, called by you, waiting for the host`
-            : callers
-              ? `${item.text}, ${blocked ? callers : `called by ${callers}`}`
-              : item.text;
+            : mine
+              ? `${item.text}, you have it, called by ${callers}`
+              : callers
+                ? `${item.text}, ${blocked ? callers : `called by ${callers}`}`
+                : item.text;
           return (
             <button key={item.id} className={cls} onClick={() => onChipTap(item)} aria-label={label}>
               <span>{item.text}</span>
