@@ -183,7 +183,7 @@ a {
   padding: 32px 0 8px;
 }
 
-/* 26px corners at 112px come from the rect's rx in `Logo`. */
+/* The rounded corners are drawn by the rect's rx in `Logo` (26px at 112px), so no border-radius here. */
 .hero-logo {
   display: block;
   margin: 0 auto 16px;
