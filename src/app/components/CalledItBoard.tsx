@@ -152,9 +152,9 @@ export function CalledItBoard(props: CalledItBoardProps) {
       <div className="chip-grid">
         {game.items.map((item) => {
           const claims = claimsOn(game, item.id);
-          const mine = you ? claimBy(game, item.id, you) : undefined;
+          const mine = self ? claimBy(game, item.id, self) : undefined;
           const recent = recentCall(game, item.id, now);
-          const blocked = !!recent && recent.playerId !== you;
+          const blocked = !!recent && recent.playerId !== self;
           // On a shared phone an item is done once everyone still playing has it.
           const done = you ? mine?.status === 'claimed' : claims.length > 0 && active.every((p) => claimBy(game, item.id, p.id)?.status === 'claimed');
           const pending = mine?.status === 'pending';
