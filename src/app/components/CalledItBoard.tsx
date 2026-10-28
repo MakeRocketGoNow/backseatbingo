@@ -103,7 +103,7 @@ export function CalledItBoard(props: CalledItBoardProps) {
 
   function doUndo(item: PackItem, c: Claim) {
     onUnclaim(item.id, c.playerId);
-    toast.show(c.status === 'pending' ? `"${item.text}" is back up for grabs` : `${nameOf(c.playerId)} loses "${item.text}"`);
+    toast.show(`${nameOf(c.playerId)} ${c.status === 'pending' ? 'does not get' : 'loses'} "${item.text}"`);
     close();
   }
 
