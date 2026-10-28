@@ -1,3 +1,13 @@
+/* Nunito (SIL Open Font License, see fonts/OFL.txt), latin subset, variable
+   weight. Bundled by Vite so the service worker precaches it for offline play. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url('./fonts/Nunito-latin.woff2') format('woff2');
+}
+
 :root {
   color-scheme: light dark;
   --bg: #ffffff;
@@ -18,7 +28,7 @@
   --radius: 16px;
   --tap: 56px;
   --gap: 12px;
-  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
